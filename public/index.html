@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radical Capacetes - Painel Interno</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:ital,wght@0,400;0,600;0,700;0,900;1,800;1,900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+
+  <!-- ========================
+       1. LOGIN SCREEN
+       ======================== -->
+  <div id="screen-login">
+    <div class="login-banner">
+      <h1 class="brand-title">RADICAL<br><span class="highlight">CAPACETES</span></h1>
+    </div>
+    <div class="login-content">
+      <div class="login-form">
+        <div class="input-group-login">
+          <i data-lucide="lock" class="input-icon"></i>
+          <input type="password" id="login-password" placeholder="DIGITE SUA SENHA" autocomplete="off">
+        </div>
+        <button id="btn-login" class="btn-primary-red">ENTRAR</button>
+        <div id="login-error" class="login-error-msg" style="display:none;">Senha incorreta. Tente 1234.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================
+       2. AUTHENTICATED APP
+       ======================== -->
+  <div id="app-wrapper" class="hidden">
+
+    <!-- Mobile / Tablet top header -->
+    <header class="app-header">
+      <button class="menu-trigger-btn">
+        <i data-lucide="menu"></i>
+      </button>
+      <span class="header-logo">RADICAL CAPACETES</span>
+      <button class="logout-btn" id="btn-logout-header" title="Sair">
+        <i data-lucide="log-out"></i>
+      </button>
+    </header>
+
+    <!-- Body: sidebar + content -->
+    <div class="app-body">
+
+      <!-- Desktop Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-logo">RADICAL<span class="highlight">.</span>CAP</div>
+
+        <nav class="sidebar-nav">
+          <button class="sidebar-nav-btn active" data-target="dashboard">
+            <i data-lucide="layout-grid"></i> Dashboard
+          </button>
+          <button class="sidebar-nav-btn" data-target="new-sale">
+            <i data-lucide="plus-circle"></i> Nova Venda
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-avatar">RC</div>
+          <div class="sidebar-user-info">
+            <div class="sidebar-user-name">Admin</div>
+            <div class="sidebar-user-role">Gerente</div>
+          </div>
+          <button class="sidebar-logout-btn" id="btn-logout-sidebar" title="Sair">
+            <i data-lucide="log-out"></i>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main content column -->
+      <div class="app-content">
+
+        <!-- =====================
+             DASHBOARD VIEW
+             ===================== -->
+        <div id="screen-dashboard" class="app-screen-content active">
+
+          <!-- Stats row -->
+          <div class="dashboard-stats-row">
+            <div class="summary-card main">
+              <div class="summary-header">
+                <span>TOTAL DE VENDAS</span>
+                <div class="live-indicator">
+                  <div class="live-dot animate-pulse"></div>
+                  <span>LIVE</span>
+                </div>
+              </div>
+              <div class="summary-value" id="dashboard-total">R$ 0,00</div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-label">TOTAL DE PEDIDOS</div>
+              <div class="summary-number" id="dashboard-count">0</div>
+            </div>
+
+            <div class="summary-card">
+              <div class="summary-label">TICKET MÉDIO</div>
+              <div class="summary-number" id="dashboard-avg">R$ 0,00</div>
+            </div>
+          </div>
+
+          <!-- Sales feed -->
+          <div class="sales-feed-section">
+            <div class="feed-header">
+              <h2>VENDAS RECENTES</h2>
+              <div class="feed-actions">
+                <button class="ai-spark-btn" id="btn-open-ai">
+                  <i data-lucide="sparkles"></i> Insights IA
+                </button>
+                <button class="ver-tudo-btn" id="btn-ver-tudo">VER TUDO</button>
+              </div>
+            </div>
+            <div class="sales-list" id="sales-list-container"></div>
+          </div>
+
+          <!-- FAB (mobile only) -->
+          <button class="fab-add-sale" id="fab-add-sale-btn" title="Nova Venda">
+            <i data-lucide="plus"></i>
+          </button>
+        </div>
+
+        <!-- =====================
+             NOVA VENDA VIEW
+             ===================== -->
+        <div id="screen-new-sale" class="app-screen-content">
+          <h2 class="section-title">NOVA VENDA</h2>
+
+          <form class="new-sale-form" id="new-sale-form">
+
+            <!-- Photo -->
+            <div class="photo-capture-card" id="btn-photo-capture">
+              <input type="file" id="photo-upload-input" accept="image/*" style="display:none">
+              <div class="photo-placeholder" id="photo-preview-container">
+                <div class="camera-icon-wrapper">
+                  <i data-lucide="camera" class="camera-icon"></i>
+                </div>
+                <span>TIRAR FOTO DO PRODUTO</span>
+              </div>
+            </div>
+
+            <!-- Product -->
+            <div class="form-group">
+              <label class="form-label">PRODUTO</label>
+              <select id="sale-product" class="form-select" required>
+                <option value="Capacete Carbon X">Capacete Carbon X</option>
+                <option value="Neon Street V2">Neon Street V2</option>
+                <option value="Dirt King MX">Dirt King MX</option>
+                <option value="Speed Racer Classic">Speed Racer Classic</option>
+                <option value="Capacete Vintage Pro">Capacete Vintage Pro</option>
+                <option value="Capacete Off-Road Extreme">Capacete Off-Road Extreme</option>
+                <option value="Capacete Urban Shield">Capacete Urban Shield</option>
+              </select>
+            </div>
+
+            <!-- Location -->
+            <div class="form-group">
+              <label class="form-label">FILIAL</label>
+              <div class="location-picker">
+                <button type="button" class="location-pill active" data-location="Jales">
+                  <i data-lucide="map-pin"></i> Jales
+                </button>
+                <button type="button" class="location-pill" data-location="Votuporanga">
+                  <i data-lucide="map-pin"></i> Votuporanga
+                </button>
+                <button type="button" class="location-pill" data-location="Rio Preto">
+                  <i data-lucide="map-pin"></i> Rio Preto
+                </button>
+              </div>
+            </div>
+
+            <!-- Value (wrapped for grid span) -->
+            <div class="form-group value-display-panel-group">
+              <label class="form-label">VALOR DA VENDA</label>
+              <div class="value-display-panel">
+                <input type="text" id="sale-value-input" value="R$ 0,00" required>
+              </div>
+            </div>
+
+            <!-- Payment -->
+            <div class="form-group">
+              <label class="form-label">MEIO DE PAGAMENTO</label>
+              <div class="payment-grid">
+                <button type="button" class="payment-card active" data-payment="PIX">PIX</button>
+                <button type="button" class="payment-card" data-payment="DÉBITO">DÉBITO</button>
+                <button type="button" class="payment-card" data-payment="CRÉDITO">CRÉDITO</button>
+                <button type="button" class="payment-card" data-payment="PARCELADO">PARCELADO</button>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn-submit-sale">
+              <i data-lucide="check-circle-2"></i> FINALIZAR VENDA
+            </button>
+
+          </form>
+        </div>
+
+      </div><!-- /.app-content -->
+    </div><!-- /.app-body -->
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+      <button class="nav-menu-btn active" id="nav-btn-dashboard">
+        <i data-lucide="layout-grid"></i>
+        <span>DASHBOARD</span>
+      </button>
+      <button class="nav-menu-btn" id="nav-btn-new-sale">
+        <i data-lucide="plus-circle"></i>
+        <span>NOVA VENDA</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app-wrapper -->
+
+  <!-- ========================
+       AI INSIGHTS MODAL
+       ======================== -->
+  <div id="ai-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>
+          <i data-lucide="sparkles" class="ai-sparkles-glow"></i>
+          Análise de IA
+        </h3>
+        <button class="modal-close-btn" id="btn-close-ai">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div id="ai-insights-loading" class="ai-loading-box" style="display:none;">
+          <div class="ai-spinner"></div>
+          <p>Conectando ao modelo neural Gemini...</p>
+        </div>
+        <div id="ai-insights-content" class="ai-markdown-content"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary-red" id="btn-close-ai-footer">OK, ENTENDIDO</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
