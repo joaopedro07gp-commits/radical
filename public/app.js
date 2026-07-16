@@ -5,6 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- APP STATE ---
   const state = {
     isAuthenticated: false,
+    events: [],
+    currentEventId: null,
     sales: [],
     selectedLocation: 'Jales',
     selectedPayment: 'PIX',
@@ -14,10 +16,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- DOM ELEMENTS ---
   const screenLogin = document.getElementById('screen-login');
+  const screenEvents = document.getElementById('screen-events');
   const appWrapper = document.getElementById('app-wrapper');
   const loginPassword = document.getElementById('login-password');
   const btnLogin = document.getElementById('btn-login');
   const loginError = document.getElementById('login-error');
+
+  // Events screen elements
+  const eventsListContainer = document.getElementById('events-list-container');
+  const btnNewEvent = document.getElementById('btn-new-event');
+  const eventModal = document.getElementById('event-modal');
+  const btnCloseEvent = document.getElementById('btn-close-event');
+  const btnSaveEvent = document.getElementById('btn-save-event');
+  const eventNameInput = document.getElementById('event-name-input');
+  const btnSwitchEvent = document.getElementById('btn-switch-event');
 
   const screenDashboard = document.getElementById('screen-dashboard');
   const screenNewSale = document.getElementById('screen-new-sale');
@@ -66,20 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
       loginPassword.value = '';
       loginError.style.display = 'none';
 
-      // Fade out login, show dashboard
+      // Fade out login, show event selection
       screenLogin.style.opacity = '0';
       screenLogin.style.transition = 'opacity 0.4s ease';
       setTimeout(() => {
         screenLogin.style.display = 'none';
-        appWrapper.classList.remove('hidden');
-        appWrapper.style.opacity = '0';
-        appWrapper.style.transition = 'opacity 0.4s ease';
-        requestAnimationFrame(() => {
-          appWrapper.style.opacity = '1';
-        });
+        screenEvents.classList.remove('hidden');
+        loadEvents();
       }, 380);
-
-      loadSales();
     } else {
       loginError.style.display = 'block';
       loginPassword.value = '';
@@ -112,6 +118,99 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnLogoutHeader)  btnLogoutHeader.addEventListener('click', doLogout);
   if (btnLogoutSidebar) btnLogoutSidebar.addEventListener('click', doLogout);
+
+  // --- EVENT SELECTION ---
+  // Return to the events screen (from the app)
+  if (btnSwitchEvent) {
+    btnSwitchEvent.addEventListener('click', () => {
+      appWrapper.classList.add('hidden');
+      screenEvents.classList.remove('hidden');
+      loadEvents();
+    });
+  }
+
+  async function loadEvents() {
+    try {
+      const response = await fetch('/api/events');
+      if (!response.ok) throw new Error('Failed to fetch events');
+      state.events = await response.json();
+      renderEvents();
+    } catch (err) {
+      console.error('Error loading events:', err);
+    }
+  }
+
+  function renderEvents() {
+    eventsListContainer.innerHTML = '';
+
+    if (state.events.length === 0) {
+      eventsListContainer.innerHTML = `<div class="events-empty">Nenhum evento criado ainda.</div>`;
+      return;
+    }
+
+    state.events.forEach(ev => {
+      const btn = document.createElement('button');
+      btn.className = 'event-card';
+      btn.innerHTML = `
+        <div class="event-card-icon"><i data-lucide="ticket"></i></div>
+        <div class="event-card-info">
+          <div class="event-card-name">${escapeHTML(ev.name)}</div>
+          <div class="event-card-action">Entrar no evento</div>
+        </div>
+        <i data-lucide="chevron-right" class="event-card-arrow"></i>
+      `;
+      btn.addEventListener('click', () => enterEvent(ev.id));
+      eventsListContainer.appendChild(btn);
+    });
+
+    lucide.createIcons();
+  }
+
+  async function enterEvent(eventId) {
+    state.currentEventId = eventId;
+    screenEvents.classList.add('hidden');
+    appWrapper.classList.remove('hidden');
+    appWrapper.style.opacity = '0';
+    appWrapper.style.transition = 'opacity 0.4s ease';
+    requestAnimationFrame(() => { appWrapper.style.opacity = '1'; });
+    await loadSales();
+    switchScreen('dashboard');
+  }
+
+  // New event modal
+  btnNewEvent.addEventListener('click', () => {
+    eventNameInput.value = '';
+    eventModal.classList.add('active');
+    setTimeout(() => eventNameInput.focus(), 100);
+  });
+
+  function closeEventModal() {
+    eventModal.classList.remove('active');
+  }
+  btnCloseEvent.addEventListener('click', closeEventModal);
+
+  btnSaveEvent.addEventListener('click', async () => {
+    const name = eventNameInput.value.trim();
+    if (!name) {
+      eventNameInput.focus();
+      return;
+    }
+    try {
+      const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!response.ok) throw new Error('Failed to create event');
+      const newEvent = await response.json();
+      state.events.push(newEvent);
+      renderEvents();
+      closeEventModal();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao criar o evento.');
+    }
+  });
 
   // --- SCREEN ROUTING ---
   function switchScreen(target) {
@@ -147,8 +246,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await fetch('/api/sales');
       if (!response.ok) throw new Error('Failed to fetch sales');
-      
-      state.sales = await response.json();
+
+      const allSales = await response.json();
+      // Filter to the currently selected event
+      state.sales = (state.currentEventId !== null)
+        ? allSales.filter(s => s.eventId === state.currentEventId)
+        : allSales;
       renderDashboard();
     } catch (err) {
       console.error('Error loading sales:', err);
@@ -160,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const total = state.sales.reduce((sum, s) => sum + s.value, 0);
     const count = state.sales.length;
     const avg   = count > 0 ? total / count : 0;
+
 
     dashboardTotal.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     if (dashboardCount) dashboardCount.textContent = count;
@@ -306,7 +410,8 @@ document.addEventListener('DOMContentLoaded', () => {
       value: value,
       location: state.selectedLocation,
       payment: state.selectedPayment,
-      photo: state.uploadedPhotoBase64
+      photo: state.uploadedPhotoBase64,
+      eventId: state.currentEventId
     };
 
     try {
@@ -352,7 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ eventId: state.currentEventId })
       });
 
       if (!response.ok) throw new Error('API server error');

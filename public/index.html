@@ -32,6 +32,41 @@
   </div>
 
   <!-- ========================
+       1.5 EVENT SELECTION (between login & app)
+       ======================== -->
+  <div id="screen-events" class="hidden">
+    <div class="events-screen">
+      <div class="events-header">
+        <h1 class="events-title">SELECIONE O <span class="highlight">EVENTO</span></h1>
+        <p class="events-subtitle">Escolha um evento para visualizar seus dados ou crie um novo.</p>
+      </div>
+      <div class="events-list" id="events-list-container"></div>
+      <button class="btn-new-event" id="btn-new-event">
+        <i data-lucide="plus"></i> NOVO EVENTO
+      </button>
+    </div>
+
+    <!-- New event modal -->
+    <div id="event-modal" class="modal-overlay">
+      <div class="modal-card event-modal-card">
+        <div class="modal-header">
+          <h3><i data-lucide="calendar-plus"></i> Novo Evento</h3>
+          <button class="modal-close-btn" id="btn-close-event"><i data-lucide="x"></i></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">NOME DO EVENTO</label>
+            <input type="text" id="event-name-input" class="form-input" placeholder="Ex: Feira Moto 2026" autocomplete="off">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-primary-red" id="btn-save-event">CRIAR EVENTO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================
        2. AUTHENTICATED APP
        ======================== -->
   <div id="app-wrapper" class="hidden">
@@ -42,6 +77,9 @@
         <i data-lucide="menu"></i>
       </button>
       <span class="header-logo">RADICAL CAPACETES</span>
+      <button class="event-switch-btn" id="btn-switch-event" title="Trocar evento">
+        <i data-lucide="layers"></i>
+      </button>
       <button class="logout-btn" id="btn-logout-header" title="Sair">
         <i data-lucide="log-out"></i>
       </button>
@@ -247,6 +285,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2"></script>
 </body>
 </html>

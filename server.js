@@ -15,6 +15,31 @@ const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_FILE = path.join(__dirname, 'data', 'sales.json');
+const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
+
+// Ensure a default "Geral" event exists and that existing sales are linked to it
+async function migrateData() {
+  try {
+    let events = await readEvents();
+    if (!Array.isArray(events) || events.length === 0) {
+      events = [{ id: 1, name: 'Geral' }];
+      await writeEvents(events);
+    }
+    const geralId = events[0].id;
+
+    const sales = await readSales();
+    let changed = false;
+    sales.forEach(s => {
+      if (s.eventId === undefined || s.eventId === null) {
+        s.eventId = geralId;
+        changed = true;
+      }
+    });
+    if (changed) await writeSales(sales);
+  } catch (error) {
+    console.error('Migration error:', error.message);
+  }
+}
 
 // Middleware
 app.use(cors());
@@ -47,7 +72,29 @@ async function writeSales(sales) {
   }
 }
 
+// Helpers for events storage
+async function readEvents() {
+  try {
+    const data = await fs.readFile(EVENTS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
+}
+
+async function writeEvents(events) {
+  try {
+    await fs.mkdir(path.dirname(EVENTS_FILE), { recursive: true });
+    await fs.writeFile(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Error writing events file:', error.message);
+  }
+}
+
 // Helper to make requests to the Gemini API
+// NOTE: Only text prompts are sent. Images are never forwarded to the model
+// (gemini-2.5-flash does not support image input), which avoids the
+// "Cannot read image.png (this model does not support image input)" error.
 async function callGemini(prompt) {
   if (!API_KEY) {
     throw new Error('API key is missing.');
@@ -60,7 +107,7 @@ async function callGemini(prompt) {
     contents: [
       {
         role: 'user',
-        parts: [{ text: prompt }]
+        parts: [{ text: String(prompt) }]
       }
     ],
     systemInstruction: {
@@ -100,14 +147,20 @@ app.get('/api/sales', async (req, res) => {
 
 // 2. Add New Sale
 app.post('/api/sales', async (req, res) => {
-  const { product, value, location, payment, photo } = req.body;
+  const { product, value, location, payment, photo, eventId } = req.body;
 
   if (!product || !value || !location || !payment) {
     return res.status(400).json({ error: 'Missing required sale parameters' });
   }
 
   const sales = await readSales();
+  const events = await readEvents();
   const newId = sales.length > 0 ? Math.max(...sales.map(s => s.id)) + 1 : 1;
+
+  // Default to the first available event if none provided
+  const resolvedEventId = (eventId !== undefined && eventId !== null)
+    ? eventId
+    : (events[0]?.id ?? null);
 
   const newSale = {
     id: newId,
@@ -116,6 +169,7 @@ app.post('/api/sales', async (req, res) => {
     location,
     payment,
     photo: photo || null, // Stores base64 image data or placeholder
+    eventId: resolvedEventId,
     date: new Date().toISOString()
   };
 
@@ -127,20 +181,26 @@ app.post('/api/sales', async (req, res) => {
 
 // 3. AI Sales Analysis & Insights
 app.post('/api/ai-insights', async (req, res) => {
+  const { eventId } = req.body || {};
   const sales = await readSales();
-  
-  if (sales.length === 0) {
-    return res.json({ insights: 'Nenhuma venda cadastrada para análise.' });
+
+  // Filter by event when one is provided
+  const filteredSales = (eventId !== undefined && eventId !== null)
+    ? sales.filter(s => s.eventId === eventId)
+    : sales;
+
+  if (filteredSales.length === 0) {
+    return res.json({ insights: 'Nenhuma venda cadastrada para análise neste evento.' });
   }
 
   // Calculate metrics to build prompt / mock response
-  const totalFaturamento = sales.reduce((sum, s) => sum + s.value, 0);
-  
+  const totalFaturamento = filteredSales.reduce((sum, s) => sum + s.value, 0);
+
   const locationCounts = {};
   const locationRevenue = {};
   const paymentCounts = {};
 
-  sales.forEach(s => {
+  filteredSales.forEach(s => {
     locationCounts[s.location] = (locationCounts[s.location] || 0) + 1;
     locationRevenue[s.location] = (locationRevenue[s.location] || 0) + s.value;
     paymentCounts[s.payment] = (paymentCounts[s.payment] || 0) + 1;
@@ -165,7 +225,10 @@ Por favor, gere um relatório de insights de negócios executivos curto e direto
     const aiText = await callGemini(prompt);
     res.json({ insights: aiText, source: 'gemini' });
   } catch (error) {
-    console.warn('Gemini API call failed, generating local fallback report:', error.message);
+    const msg = (error && error.message) || '';
+    // If the model rejects image input (or any API failure), fall back gracefully
+    const isImageError = /image|inline_data|does not support/i.test(msg);
+    console.warn('Gemini API call failed' + (isImageError ? ' (image not supported by this model)' : '') + ':', msg);
 
     // Beautiful simulated report fallback if key is inactive/billing disabled
     const mockReport = `### ⚠️ [MODO DE COMPATIBILIDADE IA DETECTADO]
@@ -192,7 +255,60 @@ ${Object.entries(locationRevenue).map(([loc, rev]) => `    *   **${loc}:** R$ ${
   }
 });
 
+// --- EVENTS ENDPOINTS ---
+
+// List events
+app.get('/api/events', async (req, res) => {
+  const events = await readEvents();
+  res.json(events);
+});
+
+// Create event
+app.post('/api/events', async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Event name is required' });
+  }
+
+  const events = await readEvents();
+  const newId = events.length > 0 ? Math.max(...events.map(e => e.id)) + 1 : 1;
+  const newEvent = { id: newId, name: name.trim() };
+  events.push(newEvent);
+  await writeEvents(events);
+
+  res.status(201).json(newEvent);
+});
+
+// Delete event (sales linked to it fall back to the first remaining event)
+app.delete('/api/events/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const events = await readEvents();
+  const remaining = events.filter(e => e.id !== id);
+
+  if (remaining.length === 0) {
+    return res.status(400).json({ error: 'Cannot delete the last event' });
+  }
+
+  await writeEvents(remaining);
+
+  // Reassign sales of the deleted event to the first remaining event
+  const sales = await readSales();
+  const fallbackId = remaining[0].id;
+  let changed = false;
+  sales.forEach(s => {
+    if (s.eventId === id) {
+      s.eventId = fallbackId;
+      changed = true;
+    }
+  });
+  if (changed) await writeSales(sales);
+
+  res.json({ success: true, fallbackId });
+});
+
 // Start server
-app.listen(PORT, () => {
-  console.log(`Radical Capacetes server running on http://localhost:${PORT}`);
+migrateData().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Radical Capacetes server running on http://localhost:${PORT}`);
+  });
 });
