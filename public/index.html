@@ -66,6 +66,27 @@
     </div>
   </div>
 
+  <!-- Camera capture modal -->
+  <div id="camera-modal" class="modal-overlay">
+    <div class="modal-card camera-modal-card">
+      <div class="modal-header">
+        <h3><i data-lucide="camera"></i> Tirar Foto do Produto</h3>
+        <button class="modal-close-btn" id="btn-close-camera"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body camera-modal-body">
+        <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
+        <div id="camera-error" class="camera-error" style="display:none;">
+          Não foi possível abrir a câmera. Use o botão abaixo para enviar uma imagem do dispositivo.
+        </div>
+        <canvas id="camera-canvas" style="display:none;"></canvas>
+      </div>
+      <div class="modal-footer camera-footer">
+        <button class="btn-primary-red" id="btn-capture-photo"><i data-lucide="camera"></i> CAPTURAR</button>
+        <button class="ver-tudo-btn" id="btn-upload-fallback">ENVIAR DO DISPOSITIVO</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========================
        2. AUTHENTICATED APP
        ======================== -->
@@ -283,6 +304,6 @@
     </div>
   </div>
 
-  <script src="app.v5.js"></script>
+  <script src="app.v6.js"></script>
 </body>
 </html>
