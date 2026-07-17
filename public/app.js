@@ -389,8 +389,13 @@ document.addEventListener('DOMContentLoaded', () => {
   newSaleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    const product = saleProductSelect.value;
-    
+    const product = saleProductSelect.value.trim();
+    if (!product) {
+      alert('Por favor, digite o nome do capacete.');
+      saleProductSelect.focus();
+      return;
+    }
+
     // Parse value input (strip "R$ ", remove dots, replace comma with dot)
     const rawValue = saleValueInput.value
       .replace('R$', '')

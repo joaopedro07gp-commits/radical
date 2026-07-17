@@ -44,7 +44,17 @@ async function migrateData() {
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Support base64 image data upload
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve static files without caching (always fresh, avoids stale app.js/image errors)
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
 
 // Verify API key is available
 const API_KEY = process.env.GEMINI_API_KEY;
