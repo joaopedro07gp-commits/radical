@@ -45,7 +45,7 @@ async function migrateData() {
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Support base64 image data upload
 
-// Serve static files without caching (always fresh, avoids stale app.js/image errors)
+// Serve static files without caching so the browser always loads the latest version
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.js') || filePath.endsWith('.css') || filePath.endsWith('.html')) {
@@ -101,10 +101,7 @@ async function writeEvents(events) {
   }
 }
 
-// Helper to make requests to the Gemini API
-// NOTE: Only text prompts are sent. Images are never forwarded to the model
-// (gemini-2.5-flash does not support image input), which avoids the
-// "Cannot read image.png (this model does not support image input)" error.
+// Helper to make requests to the Gemini API (text-only prompts)
 async function callGemini(prompt) {
   if (!API_KEY) {
     throw new Error('API key is missing.');
@@ -276,10 +273,7 @@ Por favor, gere um relatório de insights de negócios executivos curto e direto
     const aiText = await callGemini(prompt);
     res.json({ insights: aiText, source: 'gemini' });
   } catch (error) {
-    const msg = (error && error.message) || '';
-    // If the model rejects image input (or any API failure), fall back gracefully
-    const isImageError = /image|inline_data|does not support/i.test(msg);
-    console.warn('Gemini API call failed' + (isImageError ? ' (image not supported by this model)' : '') + ':', msg);
+    console.warn('Gemini API call failed, generating local fallback report:', (error && error.message) || error);
 
     // Beautiful simulated report fallback if key is inactive/billing disabled
     const mockReport = `### ⚠️ [MODO DE COMPATIBILIDADE IA DETECTADO]
