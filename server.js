@@ -189,6 +189,45 @@ app.post('/api/sales', async (req, res) => {
   res.status(201).json(newSale);
 });
 
+// 2b. Update Sale (edit)
+app.patch('/api/sales/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { product, value, location, payment, photo, eventId } = req.body;
+
+  const sales = await readSales();
+  const index = sales.findIndex(s => s.id === id);
+  if (index === -1) {
+    return res.status(404).json({ error: 'Sale not found' });
+  }
+
+  const sale = sales[index];
+  if (product !== undefined) sale.product = product;
+  if (value !== undefined) sale.value = parseFloat(value);
+  if (location !== undefined) sale.location = location;
+  if (payment !== undefined) sale.payment = payment;
+  if (photo !== undefined) sale.photo = photo;
+  if (eventId !== undefined) sale.eventId = eventId;
+
+  sales[index] = sale;
+  await writeSales(sales);
+
+  res.json(sale);
+});
+
+// 2c. Delete Sale
+app.delete('/api/sales/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const sales = await readSales();
+  const filtered = sales.filter(s => s.id !== id);
+
+  if (filtered.length === sales.length) {
+    return res.status(404).json({ error: 'Sale not found' });
+  }
+
+  await writeSales(filtered);
+  res.json({ success: true });
+});
+
 // 3. AI Sales Analysis & Insights
 app.post('/api/ai-insights', async (req, res) => {
   const { eventId } = req.body || {};

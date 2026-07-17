@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedLocation: 'Jales',
     selectedPayment: 'PIX',
     uploadedPhotoBase64: null,
-    showAllSales: false
+    showAllSales: false,
+    editingSaleId: null
   };
 
   // --- DOM ELEMENTS ---
@@ -316,12 +317,69 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="loc-badge ${locationClass}">${escapeHTML(sale.location)}</span>
           <span class="payment-method">${escapeHTML(sale.payment)}</span>
         </div>
+        <div class="sales-actions">
+          <button class="sale-action-btn edit" data-id="${sale.id}" title="Editar"><i data-lucide="pencil"></i></button>
+          <button class="sale-action-btn delete" data-id="${sale.id}" title="Excluir"><i data-lucide="trash-2"></i></button>
+        </div>
       `;
       salesListContainer.appendChild(itemDiv);
     });
 
+    // Wire edit/delete buttons
+    salesListContainer.querySelectorAll('.sale-action-btn.edit').forEach(btn => {
+      btn.addEventListener('click', () => openEditSale(parseInt(btn.getAttribute('data-id'), 10)));
+    });
+    salesListContainer.querySelectorAll('.sale-action-btn.delete').forEach(btn => {
+      btn.addEventListener('click', () => deleteSale(parseInt(btn.getAttribute('data-id'), 10)));
+    });
+
     // Update Lucide icons inside list
     lucide.createIcons();
+  }
+
+  async function deleteSale(id) {
+    if (!confirm('Tem certeza que deseja excluir esta venda?')) return;
+    try {
+      const response = await fetch('/api/sales/' + id, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete');
+      await loadSales();
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao excluir a venda.');
+    }
+  }
+
+  function openEditSale(id) {
+    const sale = state.sales.find(s => s.id === id);
+    if (!sale) return;
+
+    // Fill the new-sale form with existing data
+    saleProductSelect.value = sale.product;
+    state.selectedLocation = sale.location;
+    state.selectedPayment = sale.payment;
+    state.uploadedPhotoBase64 = sale.photo || null;
+
+    // Sync location pills
+    locationPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-location') === sale.location));
+    // Sync payment cards
+    paymentCards.forEach(c => c.classList.toggle('active', c.getAttribute('data-payment') === sale.payment));
+
+    // Value
+    saleValueInput.value = 'R$ ' + sale.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    // Photo preview
+    if (sale.photo) {
+      photoPreviewContainer.innerHTML = `<img src="${sale.photo}" class="uploaded-preview-img" alt="Foto Carregada">`;
+    } else {
+      photoPreviewContainer.innerHTML = `
+        <div class="camera-icon-wrapper"><i data-lucide="camera" class="camera-icon"></i></div>
+        <span>TIRAR FOTO DO PRODUTO</span>`;
+    }
+    lucide.createIcons();
+
+    // Switch to the form and mark editing mode
+    state.editingSaleId = id;
+    switchScreen('new-sale');
   }
 
   // Toggle show all
@@ -419,20 +477,25 @@ document.addEventListener('DOMContentLoaded', () => {
       eventId: state.currentEventId
     };
 
+    const isEditing = state.editingSaleId !== null;
+    const url = isEditing ? '/api/sales/' + state.editingSaleId : '/api/sales';
+    const method = isEditing ? 'PATCH' : 'POST';
+
     try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method: method,
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to register sale');
+      if (!response.ok) throw new Error('Failed to save sale');
 
       // Reset form
       saleValueInput.value = 'R$ 0,00';
       state.uploadedPhotoBase64 = null;
+      state.editingSaleId = null;
       photoPreviewContainer.innerHTML = `
         <div class="camera-icon-wrapper">
           <i data-lucide="camera" class="camera-icon"></i>
