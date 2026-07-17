@@ -45,6 +45,11 @@ async function migrateData() {
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Support base64 image data upload
 
+// Redirect any request for the old/unversioned app.js to the current version
+app.get('/app.js', (req, res) => {
+  res.redirect('/app.v7.js');
+});
+
 // Serve static files without caching so the browser always loads the latest version
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders: (res, filePath) => {
