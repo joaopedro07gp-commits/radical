@@ -1063,6 +1063,37 @@ body {
 .sales-item { gap: 12px; }
 
 /* ======================================================
+   7c. INSTALLMENTS PANEL
+   ====================================================== */
+.installments-panel { display: flex; }
+.installments-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.installment-pill {
+  background: var(--bg-panel);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  padding: 11px 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .2s;
+}
+.installment-pill:hover { color: var(--text-main); border-color: rgba(255,76,48,0.4); }
+.installment-pill.active {
+  background: var(--bg-input);
+  border-color: var(--accent-red);
+  color: var(--text-main);
+  box-shadow: 0 0 10px rgba(255,76,48,.1);
+}
+
+/* ======================================================
    8. SCROLLBARS
    ====================================================== */
 ::-webkit-scrollbar            { width: 6px; }
