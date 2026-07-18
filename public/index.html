@@ -66,25 +66,6 @@
     </div>
   </div>
 
-  <!-- Camera capture modal -->
-  <div id="camera-modal" class="modal-overlay">
-    <div class="modal-card camera-modal-card">
-      <div class="modal-header">
-        <h3><i data-lucide="camera"></i> Tirar Foto do Produto</h3>
-        <button class="modal-close-btn" id="btn-close-camera"><i data-lucide="x"></i></button>
-      </div>
-      <div class="modal-body camera-modal-body">
-        <video id="camera-video" class="camera-video" autoplay playsinline muted></video>
-        <div id="camera-error" class="camera-error" style="display:none;">
-          Não foi possível abrir a câmera. Use o botão abaixo para enviar uma imagem do dispositivo.
-        </div>
-        <canvas id="camera-canvas" style="display:none;"></canvas>
-      </div>
-      <div class="modal-footer camera-footer">
-        <button class="btn-primary-red" id="btn-capture-photo"><i data-lucide="camera"></i> CAPTURAR</button>
-        <button class="ver-tudo-btn" id="btn-upload-fallback">ENVIAR DO DISPOSITIVO</button>
-      </div>
-    </div>
   </div>
 
   <!-- ========================
@@ -193,17 +174,6 @@
           <h2 class="section-title">NOVA VENDA</h2>
 
           <form class="new-sale-form" id="new-sale-form">
-
-            <!-- Photo -->
-            <div class="photo-capture-card" id="btn-photo-capture">
-              <input type="file" id="photo-upload-input" accept="image/*" style="display:none">
-              <div class="photo-placeholder" id="photo-preview-container">
-                <div class="camera-icon-wrapper">
-                  <i data-lucide="camera" class="camera-icon"></i>
-                </div>
-                <span>TIRAR FOTO DO PRODUTO</span>
-              </div>
-            </div>
 
             <!-- Product -->
             <div class="form-group">

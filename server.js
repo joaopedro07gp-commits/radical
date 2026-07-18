@@ -154,7 +154,7 @@ app.get('/api/sales', async (req, res) => {
 
 // 2. Add New Sale
 app.post('/api/sales', async (req, res) => {
-  const { product, value, location, payment, photo, eventId, installments } = req.body;
+  const { product, value, location, payment, eventId, installments } = req.body;
 
   if (!product || !value || !location || !payment) {
     return res.status(400).json({ error: 'Missing required sale parameters' });
@@ -176,7 +176,6 @@ app.post('/api/sales', async (req, res) => {
     location,
     payment,
     installments: installments ?? null,
-    photo: photo || null, // Stores base64 image data or placeholder
     eventId: resolvedEventId,
     date: new Date().toISOString()
   };
@@ -190,7 +189,7 @@ app.post('/api/sales', async (req, res) => {
 // 2b. Update Sale (edit)
 app.patch('/api/sales/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { product, value, location, payment, photo, eventId, installments } = req.body;
+  const { product, value, location, payment, eventId, installments } = req.body;
 
   const sales = await readSales();
   const index = sales.findIndex(s => s.id === id);
@@ -203,7 +202,6 @@ app.patch('/api/sales/:id', async (req, res) => {
   if (value !== undefined) sale.value = parseFloat(value);
   if (location !== undefined) sale.location = location;
   if (payment !== undefined) sale.payment = payment;
-  if (photo !== undefined) sale.photo = photo;
   if (eventId !== undefined) sale.eventId = eventId;
   if (installments !== undefined) sale.installments = installments;
 

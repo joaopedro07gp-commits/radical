@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     sales: [],
     selectedLocation: 'Jales',
     selectedPayment: 'PIX',
-    uploadedPhotoBase64: null,
     showAllSales: false,
     editingSaleId: null,
     selectedInstallments: null
@@ -57,9 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // New Sale Elements
   const newSaleForm = document.getElementById('new-sale-form');
-  const btnPhotoCapture = document.getElementById('btn-photo-capture');
-  const photoUploadInput = document.getElementById('photo-upload-input');
-  const photoPreviewContainer = document.getElementById('photo-preview-container');
   const saleProductSelect = document.getElementById('sale-product');
   const saleValueInput = document.getElementById('sale-value-input');
   const locationPills = document.querySelectorAll('.location-pill');
@@ -287,21 +283,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const itemDiv = document.createElement('div');
       itemDiv.classList.add('sales-item');
 
-      // Check if custom photo base64 is present, otherwise use generic icon
+      // Map products to icons/placeholders (no image upload)
       let photoHTML = `<i data-lucide="bike"></i>`;
-      if (sale.photo) {
-        photoHTML = `<img src="${sale.photo}" alt="${sale.product}">`;
+      if (sale.product.includes('Carbon')) {
+        photoHTML = `<i data-lucide="shield-alert" style="color: var(--accent-red);"></i>`;
+      } else if (sale.product.includes('Neon')) {
+        photoHTML = `<i data-lucide="shield" style="color: var(--color-jales);"></i>`;
+      } else if (sale.product.includes('Dirt')) {
+        photoHTML = `<i data-lucide="navigation" style="color: var(--color-riopreto);"></i>`;
       } else {
-        // Map products to icons/placeholders
-        if (sale.product.includes('Carbon')) {
-          photoHTML = `<i data-lucide="shield-alert" style="color: var(--accent-red);"></i>`;
-        } else if (sale.product.includes('Neon')) {
-          photoHTML = `<i data-lucide="shield" style="color: var(--color-jales);"></i>`;
-        } else if (sale.product.includes('Dirt')) {
-          photoHTML = `<i data-lucide="navigation" style="color: var(--color-riopreto);"></i>`;
-        } else {
-          photoHTML = `<i data-lucide="helmet" style="color: var(--text-muted);"></i>`;
-        }
+        photoHTML = `<i data-lucide="helmet" style="color: var(--text-muted);"></i>`;
       }
 
       const locationClass = sale.location.toLowerCase().replace(/\s+/g, '');
@@ -358,7 +349,6 @@ document.addEventListener('DOMContentLoaded', () => {
     saleProductSelect.value = sale.product;
     state.selectedLocation = sale.location;
     state.selectedPayment = sale.payment;
-    state.uploadedPhotoBase64 = sale.photo || null;
 
     // Sync location pills
     locationPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-location') === sale.location));
@@ -379,14 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Value
     saleValueInput.value = 'R$ ' + sale.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
-    // Photo preview
-    if (sale.photo) {
-      photoPreviewContainer.innerHTML = `<img src="${sale.photo}" class="uploaded-preview-img" alt="Foto Carregada">`;
-    } else {
-      photoPreviewContainer.innerHTML = `
-        <div class="camera-icon-wrapper"><i data-lucide="camera" class="camera-icon"></i></div>
-        <span>TIRAR FOTO DO PRODUTO</span>`;
-    }
     lucide.createIcons();
 
     // Switch to the form and mark editing mode
@@ -463,89 +445,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // --- PHOTO CAPTURE (open real camera) ---
-  const cameraModal = document.getElementById('camera-modal');
-  const cameraVideo = document.getElementById('camera-video');
-  const cameraCanvas = document.getElementById('camera-canvas');
-  const cameraError = document.getElementById('camera-error');
-  const btnCloseCamera = document.getElementById('btn-close-camera');
-  const btnCapturePhoto = document.getElementById('btn-capture-photo');
-  const btnUploadFallback = document.getElementById('btn-upload-fallback');
-  let cameraStream = null;
-
-  function stopCameraStream() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(t => t.stop());
-      cameraStream = null;
-    }
-  }
-
-  function openCamera() {
-    cameraModal.classList.add('active');
-    cameraError.style.display = 'none';
-    btnCapturePhoto.style.display = 'flex';
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      cameraError.style.display = 'block';
-      btnCapturePhoto.style.display = 'none';
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-      .then(stream => {
-        cameraStream = stream;
-        cameraVideo.srcObject = stream;
-      })
-      .catch(() => {
-        cameraError.style.display = 'block';
-        btnCapturePhoto.style.display = 'none';
-      });
-  }
-
-  function closeCamera() {
-    stopCameraStream();
-    cameraModal.classList.remove('active');
-  }
-
-  btnPhotoCapture.addEventListener('click', openCamera);
-  btnCloseCamera.addEventListener('click', closeCamera);
-
-  btnCapturePhoto.addEventListener('click', () => {
-    if (!cameraStream) return;
-    const w = cameraVideo.videoWidth || 640;
-    const h = cameraVideo.videoHeight || 480;
-    cameraCanvas.width = w;
-    cameraCanvas.height = h;
-    cameraCanvas.getContext('2d').drawImage(cameraVideo, 0, 0, w, h);
-    state.uploadedPhotoBase64 = cameraCanvas.toDataURL('image/png');
-
-    photoPreviewContainer.innerHTML = `<img src="${state.uploadedPhotoBase64}" class="uploaded-preview-img" alt="Foto Carregada">`;
-    closeCamera();
-  });
-
-  // Fallback: upload from device
-  btnUploadFallback.addEventListener('click', () => {
-    stopCameraStream();
-    cameraModal.classList.remove('active');
-    photoUploadInput.click();
-  });
-
-  photoUploadInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      state.uploadedPhotoBase64 = event.target.result;
-
-      // Update preview card
-      photoPreviewContainer.innerHTML = `
-        <img src="${state.uploadedPhotoBase64}" class="uploaded-preview-img" alt="Foto Carregada">
-      `;
-    };
-    reader.readAsDataURL(file);
-  });
-
   // Form submit
   newSaleForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -577,7 +476,6 @@ document.addEventListener('DOMContentLoaded', () => {
       location: state.selectedLocation,
       payment: state.selectedPayment,
       installments: state.selectedPayment === 'PARCELADO' ? (state.selectedInstallments || 1) : null,
-      photo: state.uploadedPhotoBase64,
       eventId: state.currentEventId
     };
 
@@ -598,16 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Reset form
       saleValueInput.value = 'R$ 0,00';
-      state.uploadedPhotoBase64 = null;
       state.editingSaleId = null;
-      stopCameraStream();
-      closeCamera();
-      photoPreviewContainer.innerHTML = `
-        <div class="camera-icon-wrapper">
-          <i data-lucide="camera" class="camera-icon"></i>
-        </div>
-        <span>TIRAR FOTO DO PRODUTO</span>
-      `;
       // Update Lucide icons
       lucide.createIcons();
 
