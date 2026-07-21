@@ -75,6 +75,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const photoPreview = document.getElementById('photo-preview');
   const photoPlaceholder = document.getElementById('photo-placeholder');
 
+  // Auto refresh: update sales every 5s when app is visible
+  let salesPollInterval = null;
+  function startSalesPolling() {
+    if (salesPollInterval) return;
+    salesPollInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && state.isAuthenticated) {
+        loadSales();
+      }
+    }, 5000);
+  }
+  function stopSalesPolling() {
+    if (salesPollInterval) {
+      clearInterval(salesPollInterval);
+      salesPollInterval = null;
+    }
+  }
+
   // --- AUTHENTICATION ---
   // Helper to fetch with auth token
   async function secureFetch(url, options = {}) {
@@ -121,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
           screenLogin.style.display = 'none';
           screenEvents.classList.remove('hidden');
           loadEvents();
+          startSalesPolling();
         }, 380);
       } else {
         loginError.style.display = 'block';
@@ -139,6 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function doLogout() {
+    stopSalesPolling();
     state.isAuthenticated = false;
     localStorage.removeItem('radical_token');
     // Fade out app, show login
