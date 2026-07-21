@@ -43,7 +43,7 @@ async function migrateData() {
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Support base64 image data upload
+app.use(express.json());
 
 // Serve static files without caching so the browser always loads the latest version
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -225,79 +225,6 @@ app.delete('/api/sales/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// 3. AI Sales Analysis & Insights
-app.post('/api/ai-insights', async (req, res) => {
-  const { eventId } = req.body || {};
-  const sales = await readSales();
-
-  // Filter by event when one is provided
-  const filteredSales = (eventId !== undefined && eventId !== null)
-    ? sales.filter(s => s.eventId === eventId)
-    : sales;
-
-  if (filteredSales.length === 0) {
-    return res.json({ insights: 'Nenhuma venda cadastrada para análise neste evento.' });
-  }
-
-  // Calculate metrics to build prompt / mock response
-  const totalFaturamento = filteredSales.reduce((sum, s) => sum + s.value, 0);
-
-  const locationCounts = {};
-  const locationRevenue = {};
-  const paymentCounts = {};
-
-  filteredSales.forEach(s => {
-    locationCounts[s.location] = (locationCounts[s.location] || 0) + 1;
-    locationRevenue[s.location] = (locationRevenue[s.location] || 0) + s.value;
-    paymentCounts[s.payment] = (paymentCounts[s.payment] || 0) + 1;
-  });
-
-  const topLocation = Object.keys(locationRevenue).reduce((a, b) => locationRevenue[a] > locationRevenue[b] ? a : b, '');
-  const topPayment = Object.keys(paymentCounts).reduce((a, b) => paymentCounts[a] > paymentCounts[b] ? a : b, '');
-
-  const prompt = `Analise os dados de vendas da Radical Capacetes:
-- Faturamento Total Atual: R$ ${totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-- Distribuição de Vendas por Localidade:
-${Object.entries(locationRevenue).map(([loc, rev]) => `  * ${loc}: R$ ${rev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${locationCounts[loc]} vendas)`).join('\n')}
-- Métodos de Pagamento Utilizados:
-${Object.entries(paymentCounts).map(([pay, count]) => `  * ${pay}: ${count} transações`).join('\n')}
-
-Por favor, gere um relatório de insights de negócios executivos curto e direto estruturado exatamente nos tópicos:
-1. **Desempenho Geral**: Uma avaliação resumida da saúde financeira do negócio.
-2. **Destaques Regionais**: Comparação rápida entre as unidades.
-3. **Recomendações e Próximos Passos**: 3 sugestões estratégicas baseadas nos dados (ex: incentivar PIX onde há muito cartão se as taxas forem altas, reforçar estoque na unidade líder, promoções cruzadas).`;
-
-  try {
-    const aiText = await callGemini(prompt);
-    res.json({ insights: aiText, source: 'gemini' });
-  } catch (error) {
-    console.warn('Gemini API call failed, generating local fallback report:', (error && error.message) || error);
-
-    // Beautiful simulated report fallback if key is inactive/billing disabled
-    const mockReport = `### ⚠️ [MODO DE COMPATIBILIDADE IA DETECTADO]
-*A chave de API do Gemini no arquivo .env ainda precisa de ativação no Console do Google Cloud. Apresentando relatório de auditoria gerado pelo modelo heurístico local com base nos seus dados reais:*
-
----
-
-### 📊 Relatório Executivo - Radical Capacetes
-
-#### 1. Desempenho Geral
-O faturamento total acumulado nas filiais é de **R$ ${totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}** com **${sales.length}** transações registradas. O tíquete médio das vendas gira em torno de **R$ ${(totalFaturamento / sales.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}** por capacete.
-
-#### 2. Destaques Regionais
-*   **Unidade Líder em Receita:** **${topLocation}** lidera as operações, gerando um total de **R$ ${(locationRevenue[topLocation] || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}**.
-*   **Distribuição por Filial:**
-${Object.entries(locationRevenue).map(([loc, rev]) => `    *   **${loc}:** R$ ${rev.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${locationCounts[loc]} vendas)`).join('\n')}
-
-#### 3. Recomendações e Próximos Passos
-1.  **Otimização de Meios de Pagamento:** O método **${topPayment}** é o mais popular (presente em ${paymentCounts[topPayment]} transações). Recomenda-se incentivar o uso do **PIX** nas filiais oferecendo pequenos descontos (1% a 2%) para economizar em taxas de adquirência de cartões.
-2.  **Reposição Estratégica:** A alta demanda na filial de **${topLocation}** sugere a necessidade de reforçar o estoque de modelos premium (como o *Capacete Carbon X* e *Dirt King MX*) nesta unidade para evitar rupturas de estoque.
-3.  **Ação de Vendas nas Menores Filiais:** A unidade de menor receita deve receber uma campanha focada de marketing local no Instagram para impulsionar o tráfego de motociclistas da região.`;
-
-    res.json({ insights: mockReport, source: 'fallback' });
-  }
-});
-
 // --- EVENTS ENDPOINTS ---
 
 // List events
@@ -322,31 +249,21 @@ app.post('/api/events', async (req, res) => {
   res.status(201).json(newEvent);
 });
 
-// Delete event (sales linked to it fall back to the first remaining event)
+// Delete event (and its sales)
 app.delete('/api/events/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const events = await readEvents();
   const remaining = events.filter(e => e.id !== id);
 
-  if (remaining.length === 0) {
-    return res.status(400).json({ error: 'Cannot delete the last event' });
-  }
-
   await writeEvents(remaining);
 
-  // Reassign sales of the deleted event to the first remaining event
   const sales = await readSales();
-  const fallbackId = remaining[0].id;
-  let changed = false;
-  sales.forEach(s => {
-    if (s.eventId === id) {
-      s.eventId = fallbackId;
-      changed = true;
-    }
-  });
-  if (changed) await writeSales(sales);
+  const filtered = sales.filter(s => s.eventId !== id);
+  if (filtered.length !== sales.length) {
+    await writeSales(filtered);
+  }
 
-  res.json({ success: true, fallbackId });
+  res.json({ success: true });
 });
 
 // Start server

@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedPayment: 'PIX',
     showAllSales: false,
     editingSaleId: null,
-    selectedInstallments: null
+    selectedInstallments: null,
+    currentPhoto: null
   };
 
   // --- DOM ELEMENTS ---
@@ -46,13 +47,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Extra stat cards
   const dashboardCount = document.getElementById('dashboard-count');
-  const dashboardAvg = document.getElementById('dashboard-avg');
 
   // Dashboard Elements
   const dashboardTotal = document.getElementById('dashboard-total');
   const salesListContainer = document.getElementById('sales-list-container');
   const btnVerTudo = document.getElementById('btn-ver-tudo');
-  const btnOpenAI = document.getElementById('btn-open-ai');
+
+  // Locations detail modal
+  const locationsModal = document.getElementById('locations-modal');
+  const btnCloseLocations = document.getElementById('btn-close-locations');
+  const btnCloseLocationsFooter = document.getElementById('btn-close-locations-footer');
+  const locationsModalBody = document.getElementById('locations-modal-body');
 
   // New Sale Elements
   const newSaleForm = document.getElementById('new-sale-form');
@@ -60,33 +65,66 @@ document.addEventListener('DOMContentLoaded', () => {
   const saleValueInput = document.getElementById('sale-value-input');
   const locationPills = document.querySelectorAll('.location-pill');
   const paymentCards = document.querySelectorAll('.payment-card');
-
-  // AI Modal Elements
-  const aiModal = document.getElementById('ai-modal');
-  const btnCloseAI = document.getElementById('btn-close-ai');
-  const btnCloseAIFooter = document.getElementById('btn-close-ai-footer');
-  const aiInsightsLoading = document.getElementById('ai-insights-loading');
-  const aiInsightsContent = document.getElementById('ai-insights-content');
+  const photoCaptureCard = document.getElementById('photo-capture-card');
+  const salePhotoInput = document.getElementById('sale-photo-input');
+  const photoPreview = document.getElementById('photo-preview');
+  const photoPlaceholder = document.getElementById('photo-placeholder');
 
   // --- AUTHENTICATION ---
-  function attemptLogin() {
-    const password = loginPassword.value.trim();
-    if (password === '1234') {
-      state.isAuthenticated = true;
-      loginPassword.value = '';
-      loginError.style.display = 'none';
+  // Helper to fetch with auth token
+  async function secureFetch(url, options = {}) {
+    const token = localStorage.getItem('radical_token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
 
-      // Fade out login, show event selection
-      screenLogin.style.opacity = '0';
-      screenLogin.style.transition = 'opacity 0.4s ease';
-      setTimeout(() => {
-        screenLogin.style.display = 'none';
-        screenEvents.classList.remove('hidden');
-        loadEvents();
-      }, 380);
-    } else {
+    const response = await fetch(url, { ...options, headers });
+    if (response.status === 401) {
+      // Token expired or invalid
+      doLogout();
+      throw new Error('Sessão expirada. Faça login novamente.');
+    }
+    return response;
+  }
+
+  async function attemptLogin() {
+    const password = loginPassword.value.trim();
+    if (!password) return;
+
+    try {
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('radical_token', data.token);
+        state.isAuthenticated = true;
+        loginPassword.value = '';
+        loginError.style.display = 'none';
+
+        // Fade out login, show event selection
+        screenLogin.style.opacity = '0';
+        screenLogin.style.transition = 'opacity 0.4s ease';
+        setTimeout(() => {
+          screenLogin.style.display = 'none';
+          screenEvents.classList.remove('hidden');
+          loadEvents();
+        }, 380);
+      } else {
+        loginError.style.display = 'block';
+        loginPassword.value = '';
+      }
+    } catch (err) {
+      console.error(err);
+      loginError.textContent = 'Erro ao conectar ao servidor.';
       loginError.style.display = 'block';
-      loginPassword.value = '';
     }
   }
 
@@ -97,11 +135,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function doLogout() {
     state.isAuthenticated = false;
+    localStorage.removeItem('radical_token');
     // Fade out app, show login
     appWrapper.style.opacity = '0';
     appWrapper.style.transition = 'opacity 0.3s ease';
     setTimeout(() => {
       appWrapper.classList.add('hidden');
+      screenEvents.classList.add('hidden'); // Certifica que oculta seleção de eventos
       appWrapper.style.opacity = '';
       appWrapper.style.transition = '';
       screenLogin.style.display = 'flex';
@@ -117,6 +157,15 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnLogoutHeader)  btnLogoutHeader.addEventListener('click', doLogout);
   if (btnLogoutSidebar) btnLogoutSidebar.addEventListener('click', doLogout);
 
+  // Auto-login if token is present
+  const existingToken = localStorage.getItem('radical_token');
+  if (existingToken) {
+    state.isAuthenticated = true;
+    screenLogin.style.display = 'none';
+    screenEvents.classList.remove('hidden');
+    loadEvents();
+  }
+
   // --- EVENT SELECTION ---
   // Return to the events screen (from the app)
   if (btnSwitchEvent) {
@@ -129,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadEvents() {
     try {
-      const response = await fetch('/api/events');
+      const response = await secureFetch('/api/events');
       if (!response.ok) throw new Error('Failed to fetch events');
       state.events = await response.json();
       renderEvents();
@@ -147,8 +196,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     state.events.forEach(ev => {
+      // Container div to wrap the button card and action button
+      const cardWrapper = document.createElement('div');
+      cardWrapper.style.display = 'flex';
+      cardWrapper.style.alignItems = 'center';
+      cardWrapper.style.width = '100%';
+      cardWrapper.style.gap = '8px';
+
       const btn = document.createElement('button');
       btn.className = 'event-card';
+      btn.style.flexGrow = '1';
       btn.innerHTML = `
         <div class="event-card-icon"><i data-lucide="ticket"></i></div>
         <div class="event-card-info">
@@ -158,7 +215,47 @@ document.addEventListener('DOMContentLoaded', () => {
         <i data-lucide="chevron-right" class="event-card-arrow"></i>
       `;
       btn.addEventListener('click', () => enterEvent(ev.id));
-      eventsListContainer.appendChild(btn);
+      cardWrapper.appendChild(btn);
+
+      // Delete event button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'event-delete-btn';
+      deleteBtn.title = 'Excluir Evento';
+      deleteBtn.innerHTML = `<i data-lucide="trash-2"></i>`;
+      deleteBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const passwordInput = prompt(`Para excluir o evento "${ev.name}", digite a senha de confirmação:`);
+        if (passwordInput === null) return; // Cancelado
+
+        if (passwordInput !== 'radical') {
+          alert('Senha incorreta. O evento não foi excluído.');
+          return;
+        }
+
+        if (!confirm(`Tem certeza que deseja excluir o evento "${ev.name}"? As vendas vinculadas a ele serão migradas para outro evento.`)) {
+          return;
+        }
+
+        try {
+          const response = await secureFetch(`/api/events/${ev.id}`, {
+            method: 'DELETE'
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Erro ao deletar o evento.');
+          }
+
+          alert('Evento excluído com sucesso!');
+          loadEvents();
+        } catch (err) {
+          console.error(err);
+          alert(err.message || 'Erro ao deletar o evento.');
+        }
+      });
+      cardWrapper.appendChild(deleteBtn);
+
+      eventsListContainer.appendChild(cardWrapper);
     });
 
     lucide.createIcons();
@@ -194,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     try {
-      const response = await fetch('/api/events', {
+      const response = await secureFetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
@@ -242,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- SALES LOADER & RENDERER ---
   async function loadSales() {
     try {
-      const response = await fetch('/api/sales');
+      const response = await secureFetch('/api/sales');
       if (!response.ok) throw new Error('Failed to fetch sales');
 
       const allSales = await response.json();
@@ -260,12 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // 1. Calculate stats
     const total = state.sales.reduce((sum, s) => sum + s.value, 0);
     const count = state.sales.length;
-    const avg   = count > 0 ? total / count : 0;
-
 
     dashboardTotal.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     if (dashboardCount) dashboardCount.textContent = count;
-    if (dashboardAvg)   dashboardAvg.textContent   = avg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     // 2. Render Sales List
     salesListContainer.innerHTML = '';
@@ -283,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const itemDiv = document.createElement('div');
       itemDiv.classList.add('sales-item');
 
-      // Map products to icons/placeholders (no image upload)
+      // Map products to icons/placeholders
       let photoHTML = `<i data-lucide="bike"></i>`;
       if (sale.product.includes('Carbon')) {
         photoHTML = `<i data-lucide="shield-alert" style="color: var(--accent-red);"></i>`;
@@ -329,10 +423,63 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
+  // --- LOCATIONS DETAIL MODAL ---
+  function openLocationsModal() {
+    const sales = state.sales || [];
+    if (sales.length === 0) {
+      locationsModalBody.innerHTML = '<p style="color: var(--text-muted); text-align: center;">Nenhuma venda registrada para este evento.</p>';
+      locationsModal.classList.add('active');
+      return;
+    }
+
+    const grouped = {};
+    sales.forEach(s => {
+      if (!grouped[s.location]) grouped[s.location] = { total: 0, items: [] };
+      grouped[s.location].total += s.value;
+      grouped[s.location].items.push(s);
+    });
+
+    let html = '';
+    Object.keys(grouped).forEach(loc => {
+      const data = grouped[loc];
+      html += `
+        <div class="location-group">
+          <div class="location-header">
+            <span class="location-name">${escapeHTML(loc)}</span>
+            <span class="location-total">${data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
+          <div class="location-items">
+      `;
+      data.items.forEach(item => {
+        html += `
+          <div class="location-item">
+            <span class="location-item-name">${escapeHTML(item.product)}</span>
+            <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+          </div>
+        `;
+      });
+      html += `</div></div>`;
+    });
+
+    locationsModalBody.innerHTML = html;
+    locationsModal.classList.add('active');
+  }
+
+  function closeLocationsModal() {
+    locationsModal.classList.remove('active');
+  }
+
+  if (dashboardTotal) {
+    dashboardTotal.addEventListener('click', openLocationsModal);
+    dashboardTotal.style.cursor = 'pointer';
+  }
+  if (btnCloseLocations) btnCloseLocations.addEventListener('click', closeLocationsModal);
+  if (btnCloseLocationsFooter) btnCloseLocationsFooter.addEventListener('click', closeLocationsModal);
+
   async function deleteSale(id) {
     if (!confirm('Tem certeza que deseja excluir esta venda?')) return;
     try {
-      const response = await fetch('/api/sales/' + id, { method: 'DELETE' });
+      const response = await secureFetch('/api/sales/' + id, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete');
       await loadSales();
     } catch (err) {
@@ -484,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const method = isEditing ? 'PATCH' : 'POST';
 
     try {
-      const response = await fetch(url, {
+      const response = await secureFetch(url, {
         method: method,
         headers: {
           'Content-Type': 'application/json'
@@ -507,78 +654,6 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Erro ao enviar a venda para o servidor.');
     }
   });
-
-  // --- AI INSIGHTS DIALOGS ---
-
-  btnOpenAI.addEventListener('click', async () => {
-    aiModal.classList.add('active');
-    aiInsightsLoading.style.display = 'flex';
-    aiInsightsContent.innerHTML = '';
-
-    try {
-      const response = await fetch('/api/ai-insights', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ eventId: state.currentEventId })
-      });
-
-      if (!response.ok) throw new Error('API server error');
-      const data = await response.json();
-
-      aiInsightsLoading.style.display = 'none';
-
-      if (data.insights) {
-        aiInsightsContent.innerHTML = parseMarkdownToHTML(data.insights);
-      }
-    } catch (err) {
-      console.error(err);
-      aiInsightsLoading.style.display = 'none';
-      aiInsightsContent.innerHTML = `<p style="color: var(--color-votuporanga); font-weight:600;">Falha de comunicação neural. Erro ao analisar os dados de vendas.</p>`;
-    }
-  });
-
-  function closeModal() {
-    aiModal.classList.remove('active');
-  }
-
-  btnCloseAI.addEventListener('click', closeModal);
-  btnCloseAIFooter.addEventListener('click', closeModal);
-
-  // Helper Markdown-to-HTML parser (handles headers, bullets, bold text)
-  function parseMarkdownToHTML(md) {
-    let html = md;
-
-    // Headers
-    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
-    html = html.replace(/^#### (.*$)/gim, '<h4>$1</h4>');
-
-    // Bold text
-    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
-
-    // Lists (simple conversion)
-    html = html.replace(/^\*\s+(.*$)/gim, '<li>$1</li>');
-    html = html.replace(/^\-\s+(.*$)/gim, '<li>$1</li>');
-    
-    // Wrap groups of <li> in <ul> (quick approximate helper)
-    html = html.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
-    // clean up duplicate adjacent <ul> tags
-    html = html.replace(/<\/ul>\s*<ul>/gim, '');
-
-    // Paragraph breaks
-    html = html.replace(/\n\n/gim, '</p><p>');
-    
-    // Horizontal rule
-    html = html.replace(/^---/gim, '<hr>');
-
-    // Wrap the whole string in a paragraph tag if it doesn't start with block element
-    if (!html.startsWith('<h') && !html.startsWith('<u') && !html.startsWith('<p')) {
-      html = '<p>' + html + '</p>';
-    }
-
-    return html;
-  }
 
   // Escape HTML helper
   function escapeHTML(str) {

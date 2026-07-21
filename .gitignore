@@ -1,5 +1,11 @@
 node_modules/
 .env
+.env.local
 .DS_Store
 cloudflared.exe
 data/
+# Firebase service account key — NUNCA comite este arquivo!
+firebase-key.json
+*.serviceAccount.json
+
+.vercel

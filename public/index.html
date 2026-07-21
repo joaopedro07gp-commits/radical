@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:ital,wght@0,400;0,600;0,700;0,900;1,800;1,900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪖</text></svg>">
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
@@ -141,10 +142,6 @@
               <div class="summary-number" id="dashboard-count">0</div>
             </div>
 
-            <div class="summary-card">
-              <div class="summary-label">TICKET MÉDIO</div>
-              <div class="summary-number" id="dashboard-avg">R$ 0,00</div>
-            </div>
           </div>
 
           <!-- Sales feed -->
@@ -152,9 +149,6 @@
             <div class="feed-header">
               <h2>VENDAS RECENTES</h2>
               <div class="feed-actions">
-                <button class="ai-spark-btn" id="btn-open-ai">
-                  <i data-lucide="sparkles"></i> Insights IA
-                </button>
                 <button class="ver-tudo-btn" id="btn-ver-tudo">VER TUDO</button>
               </div>
             </div>
@@ -179,6 +173,19 @@
             <div class="form-group">
               <label class="form-label">NOME DO CAPACETE</label>
               <input type="text" id="sale-product" class="form-input" placeholder="Ex: Capacete Carbon X" autocomplete="off" required>
+            </div>
+
+            <!-- Photo Capture -->
+            <div class="form-group">
+              <label class="form-label">FOTO DO CAPACETE</label>
+              <input type="file" id="sale-photo-input" accept="image/*" capture="environment" style="display: none;">
+              <div class="photo-capture-card" id="photo-capture-card">
+                <div class="photo-placeholder" id="photo-placeholder">
+                  <i data-lucide="camera" style="width: 32px; height: 32px; color: var(--text-muted);"></i>
+                  <span>TOQUE PARA TIRAR FOTO OU ENVIAR ARQUIVO</span>
+                </div>
+                <img id="photo-preview" class="hidden" style="max-height: 120px; border-radius: var(--radius-md); object-fit: contain;">
+              </div>
             </div>
 
             <!-- Location -->
@@ -248,32 +255,22 @@
   </div><!-- /#app-wrapper -->
 
   <!-- ========================
-       AI INSIGHTS MODAL
+       LOCATIONS DETAIL MODAL
        ======================== -->
-  <div id="ai-modal" class="modal-overlay">
-    <div class="modal-card">
+  <div id="locations-modal" class="modal-overlay">
+    <div class="modal-card locations-modal-card">
       <div class="modal-header">
-        <h3>
-          <i data-lucide="sparkles" class="ai-sparkles-glow"></i>
-          Análise de IA
-        </h3>
-        <button class="modal-close-btn" id="btn-close-ai">
-          <i data-lucide="x"></i>
-        </button>
+        <h3><i data-lucide="map-pin"></i> Vendas por Loja</h3>
+        <button class="modal-close-btn" id="btn-close-locations"><i data-lucide="x"></i></button>
       </div>
-      <div class="modal-body">
-        <div id="ai-insights-loading" class="ai-loading-box" style="display:none;">
-          <div class="ai-spinner"></div>
-          <p>Conectando ao modelo neural Gemini...</p>
-        </div>
-        <div id="ai-insights-content" class="ai-markdown-content"></div>
+      <div class="modal-body" id="locations-modal-body">
       </div>
       <div class="modal-footer">
-        <button class="btn-primary-red" id="btn-close-ai-footer">OK, ENTENDIDO</button>
+        <button class="btn-primary-red" id="btn-close-locations-footer">FECHAR</button>
       </div>
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=20240717b"></script>
 </body>
 </html>

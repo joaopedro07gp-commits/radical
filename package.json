@@ -1,17 +1,19 @@
 {
   "name": "radical-ai",
   "version": "1.0.0",
-  "description": "Radical AI Hub using Gemini API",
-  "main": "server.js",
+  "description": "Radical Capacetes — Painel de Vendas com Firebase + Vercel",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "vercel-dev": "vercel dev",
+    "migrate": "node scripts/migrate-to-firestore.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "firebase-admin": "^13.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
