@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const photoPreview = document.getElementById('photo-preview');
   const photoPlaceholder = document.getElementById('photo-placeholder');
 
-  // Auto refresh: update sales every 5s when app is visible
+  // Auto refresh: update sales every 1s when app is visible
   let salesPollInterval = null;
   function startSalesPolling() {
     if (salesPollInterval) return;
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (document.visibilityState === 'visible' && state.isAuthenticated) {
         loadSales();
       }
-    }, 5000);
+    }, 1000);
   }
   function stopSalesPolling() {
     if (salesPollInterval) {
