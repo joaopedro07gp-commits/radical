@@ -20,12 +20,19 @@ const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
 // Ensure a default "Geral" event exists and that existing sales are linked to it
 async function migrateData() {
   try {
+    let fileExists = true;
+    try {
+      await fs.access(EVENTS_FILE);
+    } catch {
+      fileExists = false;
+    }
+
     let events = await readEvents();
-    if (!Array.isArray(events) || events.length === 0) {
+    if (!fileExists && (!Array.isArray(events) || events.length === 0)) {
       events = [{ id: 1, name: 'Geral' }];
       await writeEvents(events);
     }
-    const geralId = events[0].id;
+    const geralId = events.length > 0 ? events[0].id : null;
 
     const sales = await readSales();
     let changed = false;
@@ -154,7 +161,7 @@ app.get('/api/sales', async (req, res) => {
 
 // 2. Add New Sale
 app.post('/api/sales', async (req, res) => {
-  const { product, value, location, payment, eventId, installments } = req.body;
+  const { product, value, location, payment, eventId, installments, photo } = req.body;
 
   if (!product || !value || !location || !payment) {
     return res.status(400).json({ error: 'Missing required sale parameters' });
@@ -177,6 +184,7 @@ app.post('/api/sales', async (req, res) => {
     payment,
     installments: installments ?? null,
     eventId: resolvedEventId,
+    photo: photo ?? null,
     date: new Date().toISOString()
   };
 
@@ -189,7 +197,7 @@ app.post('/api/sales', async (req, res) => {
 // 2b. Update Sale (edit)
 app.patch('/api/sales/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const { product, value, location, payment, eventId, installments } = req.body;
+  const { product, value, location, payment, eventId, installments, photo } = req.body;
 
   const sales = await readSales();
   const index = sales.findIndex(s => s.id === id);
@@ -204,6 +212,7 @@ app.patch('/api/sales/:id', async (req, res) => {
   if (payment !== undefined) sale.payment = payment;
   if (eventId !== undefined) sale.eventId = eventId;
   if (installments !== undefined) sale.installments = installments;
+  if (photo !== undefined) sale.photo = photo;
 
   sales[index] = sale;
   await writeSales(sales);
@@ -258,7 +267,7 @@ app.delete('/api/events/:id', async (req, res) => {
   await writeEvents(remaining);
 
   const sales = await readSales();
-  const filtered = sales.filter(s => s.eventId !== id);
+  const filtered = sales.filter(s => String(s.eventId) !== String(id));
   if (filtered.length !== sales.length) {
     await writeSales(filtered);
   }

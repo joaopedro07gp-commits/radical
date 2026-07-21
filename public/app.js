@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        if (!confirm(`Tem certeza que deseja excluir o evento "${ev.name}"? As vendas vinculadas a ele serão migradas para outro evento.`)) {
+        if (!confirm(`Tem certeza que deseja excluir o evento "${ev.name}"? Todas as vendas vinculadas a ele serão excluídas permanentemente.`)) {
           return;
         }
 
@@ -247,6 +247,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
 
           alert('Evento excluído com sucesso!');
+          if (state.currentEventId !== null && String(state.currentEventId) === String(ev.id)) {
+            state.currentEventId = null;
+          }
           loadEvents();
         } catch (err) {
           console.error(err);
@@ -345,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const allSales = await response.json();
       // Filter to the currently selected event
       state.sales = (state.currentEventId !== null)
-        ? allSales.filter(s => s.eventId === state.currentEventId)
+        ? allSales.filter(s => String(s.eventId) === String(state.currentEventId))
         : allSales;
       renderDashboard();
     } catch (err) {
@@ -379,7 +382,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Map products to icons/placeholders
       let photoHTML = `<i data-lucide="bike"></i>`;
-      if (sale.product.includes('Carbon')) {
+      if (sale.photo) {
+        photoHTML = `<img src="${sale.photo}" alt="${escapeHTML(sale.product)}" />`;
+      } else if (sale.product.includes('Carbon')) {
         photoHTML = `<i data-lucide="shield-alert" style="color: var(--accent-red);"></i>`;
       } else if (sale.product.includes('Neon')) {
         photoHTML = `<i data-lucide="shield" style="color: var(--color-jales);"></i>`;
@@ -413,10 +418,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Wire edit/delete buttons
     salesListContainer.querySelectorAll('.sale-action-btn.edit').forEach(btn => {
-      btn.addEventListener('click', () => openEditSale(parseInt(btn.getAttribute('data-id'), 10)));
+      btn.addEventListener('click', () => openEditSale(btn.getAttribute('data-id')));
     });
     salesListContainer.querySelectorAll('.sale-action-btn.delete').forEach(btn => {
-      btn.addEventListener('click', () => deleteSale(parseInt(btn.getAttribute('data-id'), 10)));
+      btn.addEventListener('click', () => deleteSale(btn.getAttribute('data-id')));
     });
 
     // Update Lucide icons inside list
@@ -453,8 +458,14 @@ document.addEventListener('DOMContentLoaded', () => {
       data.items.forEach(item => {
         html += `
           <div class="location-item">
-            <span class="location-item-name">${escapeHTML(item.product)}</span>
-            <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            <div class="location-item-left">
+              ${item.photo ? `<img class="location-item-photo" src="${item.photo}" alt="${escapeHTML(item.product)}">` : `<i data-lucide="bike" class="location-item-icon"></i>`}
+              <span class="location-item-name">${escapeHTML(item.product)}</span>
+            </div>
+            <div class="location-item-right">
+              <span class="location-item-payment">${escapeHTML(item.payment)}${item.installments ? ' ' + item.installments + 'x' : ''}</span>
+              <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
           </div>
         `;
       });
@@ -489,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function openEditSale(id) {
-    const sale = state.sales.find(s => s.id === id);
+    const sale = state.sales.find(s => String(s.id) === String(id));
     if (!sale) return;
 
     // Fill the new-sale form with existing data
@@ -515,6 +526,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Value
     saleValueInput.value = 'R$ ' + sale.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    // Photo preview
+    state.currentPhoto = sale.photo || null;
+    if (sale.photo) {
+      photoPreview.src = sale.photo;
+      photoPreview.classList.remove('hidden');
+      photoPlaceholder.classList.add('hidden');
+    } else {
+      photoPreview.src = '';
+      photoPreview.classList.add('hidden');
+      photoPlaceholder.classList.remove('hidden');
+    }
 
     lucide.createIcons();
 
@@ -623,7 +646,8 @@ document.addEventListener('DOMContentLoaded', () => {
       location: state.selectedLocation,
       payment: state.selectedPayment,
       installments: state.selectedPayment === 'PARCELADO' ? (state.selectedInstallments || 1) : null,
-      eventId: state.currentEventId
+      eventId: state.currentEventId,
+      photo: state.currentPhoto
     };
 
     const isEditing = state.editingSaleId !== null;
@@ -644,6 +668,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // Reset form
       saleValueInput.value = 'R$ 0,00';
       state.editingSaleId = null;
+      state.currentPhoto = null;
+      photoPreview.src = '';
+      photoPreview.classList.add('hidden');
+      photoPlaceholder.classList.remove('hidden');
+      
       // Update Lucide icons
       lucide.createIcons();
 
@@ -654,6 +683,62 @@ document.addEventListener('DOMContentLoaded', () => {
       alert('Erro ao enviar a venda para o servidor.');
     }
   });
+
+  // --- PHOTO CAPTURE & COMPRESSION ---
+  if (photoCaptureCard && salePhotoInput) {
+    photoCaptureCard.addEventListener('click', () => {
+      salePhotoInput.click();
+    });
+
+    salePhotoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      compressImage(file, (compressedBase64) => {
+        state.currentPhoto = compressedBase64;
+        photoPreview.src = compressedBase64;
+        photoPreview.classList.remove('hidden');
+        photoPlaceholder.classList.add('hidden');
+      });
+    });
+  }
+
+  function compressImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 600;
+        const MAX_HEIGHT = 600;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Compress as JPEG with 0.6 quality to keep payload very small
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        callback(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Escape HTML helper
   function escapeHTML(str) {
