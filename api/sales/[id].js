@@ -70,5 +70,37 @@ export default async function handler(req, res) {
     }
   }
 
+  // ──────────────────────────────────────────
+  // SSE /api/sales/stream  →  real-time updates
+  // Usage: /api/sales/stream?eventId=...
+  // ──────────────────────────────────────────
+  if (req.url.includes('/stream')) {
+    try {
+      const url = new URL(req.url, 'http://localhost');
+      const eventId = url.searchParams.get('eventId');
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      let q = db.collection('sales').orderBy('date', 'desc');
+      if (eventId) q = q.where('eventId', '==', eventId);
+
+      const unsubscribe = q.onSnapshot((snapshot) => {
+        const sales = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        res.write(`data: ${JSON.stringify(sales)}\n\n`);
+      });
+
+      req.on('close', () => {
+        unsubscribe();
+        res.end();
+      });
+    } catch (err) {
+      console.error('SSE /api/sales/stream error:', err);
+      res.status(500).end();
+    }
+    return;
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }

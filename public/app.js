@@ -75,7 +75,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const photoPreview = document.getElementById('photo-preview');
   const photoPlaceholder = document.getElementById('photo-placeholder');
 
-  // Auto refresh: update sales every 1s when app is visible
+  // Real-time updates via SSE, fallback to 1s polling
+  let salesEventSource = null;
   let salesPollInterval = null;
   function startSalesPolling() {
     if (salesPollInterval) return;
@@ -89,6 +90,37 @@ document.addEventListener('DOMContentLoaded', () => {
     if (salesPollInterval) {
       clearInterval(salesPollInterval);
       salesPollInterval = null;
+    }
+  }
+  function startSalesSSE() {
+    if (salesEventSource) return;
+    const token = localStorage.getItem('radical_token');
+    const eventId = state.currentEventId || '';
+    const url = `/api/sales/stream${eventId ? '?eventId=' + encodeURIComponent(eventId) : ''}${token ? (eventId ? '&token=' : '?token=') + encodeURIComponent(token) : ''}`;
+    try {
+      salesEventSource = new EventSource(url);
+      salesEventSource.onmessage = (e) => {
+        try {
+          const sales = JSON.parse(e.data);
+          state.sales = sales;
+          renderDashboard();
+        } catch (_) {}
+      };
+      salesEventSource.onerror = () => {
+        salesEventSource.close();
+        salesEventSource = null;
+        startSalesPolling();
+      };
+      stopSalesPolling();
+    } catch (_) {
+      salesEventSource = null;
+      startSalesPolling();
+    }
+  }
+  function stopSalesSSE() {
+    if (salesEventSource) {
+      salesEventSource.close();
+      salesEventSource = null;
     }
   }
 
@@ -138,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
           screenLogin.style.display = 'none';
           screenEvents.classList.remove('hidden');
           loadEvents();
-          startSalesPolling();
+          startSalesSSE();
         }, 380);
       } else {
         loginError.style.display = 'block';
@@ -157,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function doLogout() {
+    stopSalesSSE();
     stopSalesPolling();
     state.isAuthenticated = false;
     localStorage.removeItem('radical_token');
@@ -290,6 +323,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function enterEvent(eventId) {
     state.currentEventId = eventId;
+    stopSalesSSE();
     screenEvents.classList.add('hidden');
     appWrapper.classList.remove('hidden');
     appWrapper.style.opacity = '0';
@@ -297,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
     requestAnimationFrame(() => { appWrapper.style.opacity = '1'; });
     await loadSales();
     switchScreen('dashboard');
+    startSalesSSE();
   }
 
   // New event modal

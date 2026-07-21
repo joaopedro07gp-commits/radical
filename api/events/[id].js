@@ -47,5 +47,32 @@ export default async function handler(req, res) {
     }
   }
 
+  // ──────────────────────────────────────────
+  // SSE /api/events/stream  →  real-time updates
+  // Usage: /api/events/stream
+  // ──────────────────────────────────────────
+  if (req.url.includes('/stream')) {
+    try {
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders();
+
+      const unsubscribe = db.collection('events').orderBy('createdAt').onSnapshot((snapshot) => {
+        const events = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        res.write(`data: ${JSON.stringify(events)}\n\n`);
+      });
+
+      req.on('close', () => {
+        unsubscribe();
+        res.end();
+      });
+    } catch (err) {
+      console.error('SSE /api/events/stream error:', err);
+      res.status(500).end();
+    }
+    return;
+  }
+
   return res.status(405).json({ error: 'Method not allowed' });
 }
