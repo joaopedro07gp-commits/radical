@@ -59,6 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCloseLocationsFooter = document.getElementById('btn-close-locations-footer');
   const locationsModalBody = document.getElementById('locations-modal-body');
 
+  // Photo zoom
+  const photoZoomOverlay = document.getElementById('photo-zoom-overlay');
+  const photoZoomImg = document.getElementById('photo-zoom-img');
+  const photoZoomClose = document.getElementById('photo-zoom-close');
+
   // New Sale Elements
   const newSaleForm = document.getElementById('new-sale-form');
   const saleProductSelect = document.getElementById('sale-product');
@@ -486,6 +491,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (btnCloseLocations) btnCloseLocations.addEventListener('click', closeLocationsModal);
   if (btnCloseLocationsFooter) btnCloseLocationsFooter.addEventListener('click', closeLocationsModal);
+
+  locationsModalBody.addEventListener('click', (e) => {
+    const img = e.target.closest('.location-item-photo');
+    if (!img) return;
+    photoZoomImg.src = img.src;
+    photoZoomOverlay.classList.add('active');
+  });
+
+  photoZoomClose.addEventListener('click', () => photoZoomOverlay.classList.remove('active'));
+  photoZoomOverlay.addEventListener('click', (e) => { if (e.target === photoZoomOverlay) photoZoomOverlay.classList.remove('active'); });
 
   async function deleteSale(id) {
     if (!confirm('Tem certeza que deseja excluir esta venda?')) return;
