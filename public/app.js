@@ -534,12 +534,14 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="location-item">
             <div class="location-item-left">
               ${item.photo ? `<img class="location-item-photo" src="${item.photo}" alt="${escapeHTML(item.product)}">` : `<i data-lucide="bike" class="location-item-icon"></i>`}
-              <span class="location-item-name">${escapeHTML(item.product)}</span>
+              <div class="location-item-info">
+                <span class="location-item-name">${escapeHTML(item.product)}</span>
+                ${item.notes ? `<span class="location-item-note">${escapeHTML(item.notes)}</span>` : ''}
+              </div>
             </div>
             <div class="location-item-right">
               <span class="location-item-payment">${escapeHTML(item.payment)}${item.installments ? ' ' + item.installments + 'x' : ''}</span>
               <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-              ${item.notes ? `<span class="location-item-note">${escapeHTML(item.notes)}</span>` : ''}
             </div>
           </div>
         `;
