@@ -1,7 +1,3 @@
-import { verifyPassword } from '../lib/auth.js';
-import { db } from '../lib/firebase.js';
-import { scryptSync } from 'crypto';
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -18,24 +14,11 @@ export default async function handler(req, res) {
 
   const { password } = req.body;
 
-  try {
-    const doc = await db.collection('credentials').doc('deleteEvent').get();
-    let expectedHash = null;
-    if (doc.exists) {
-      expectedHash = doc.data().hash;
-    } else {
-      const salt = 'fallback-salt';
-      const hash = scryptSync('radical017', salt, 64).toString('hex');
-      expectedHash = `v1:${salt}:${hash}`;
-    }
+  const deletePassword = process.env.ADMIN_DELETE_PASSWORD || 'radical017';
 
-    if (password && verifyPassword(password, expectedHash)) {
-      return res.status(200).json({ success: true });
-    }
-
-    return res.status(401).json({ error: 'Senha incorreta.' });
-  } catch (err) {
-    console.error('/api/verify-delete error:', err);
-    return res.status(500).json({ error: 'Erro ao verificar senha.' });
+  if (password && password === deletePassword) {
+    return res.status(200).json({ success: true });
   }
+
+  return res.status(401).json({ error: 'Senha incorreta.' });
 }

@@ -1,5 +1,4 @@
 import { getExpectedToken, hashPassword, verifyPassword } from '../lib/auth.js';
-import { db } from '../lib/firebase.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,24 +12,12 @@ export default async function handler(req, res) {
 
   const { password } = req.body;
 
-  try {
-    const doc = await db.collection('credentials').doc('login').get();
-    let expectedHash = null;
-    if (doc.exists) {
-      expectedHash = doc.data().hash;
-    } else {
-      expectedHash = hashPassword(process.env.ADMIN_PASSWORD || '1234');
-      await db.collection('credentials').doc('login').set({ hash: expectedHash });
-    }
+  const adminPassword = process.env.ADMIN_PASSWORD || 'radical4321';
 
-    if (password && verifyPassword(password, expectedHash)) {
-      const token = getExpectedToken();
-      return res.status(200).json({ success: true, token });
-    }
-
-    return res.status(401).json({ error: 'Senha incorreta.' });
-  } catch (err) {
-    console.error('/api/auth error:', err);
-    return res.status(500).json({ error: 'Erro ao autenticar.' });
+  if (password === adminPassword) {
+    const token = getExpectedToken();
+    return res.status(200).json({ success: true, token });
   }
+
+  return res.status(401).json({ error: 'Senha incorreta.' });
 }
