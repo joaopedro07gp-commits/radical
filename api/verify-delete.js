@@ -1,5 +1,6 @@
 import { verifyPassword } from '../lib/auth.js';
 import { db } from '../lib/firebase.js';
+import { scryptSync } from 'crypto';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -23,7 +24,9 @@ export default async function handler(req, res) {
     if (doc.exists) {
       expectedHash = doc.data().hash;
     } else {
-      expectedHash = require('crypto').scryptSync('radical017', Buffer.from('fallback-salt'), 64).toString('hex');
+      const salt = 'fallback-salt';
+      const hash = scryptSync('radical017', salt, 64).toString('hex');
+      expectedHash = `v1:${salt}:${hash}`;
     }
 
     if (password && verifyPassword(password, expectedHash)) {
