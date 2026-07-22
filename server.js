@@ -4,9 +4,25 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import { scryptSync, randomBytes } from 'crypto';
 
 // Load environment variables
 dotenv.config();
+
+function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(password, salt, 64).toString('hex');
+  return `v1:${salt}:${hash}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.startsWith('v1:')) return false;
+  const parts = stored.split(':');
+  if (parts.length !== 3) return false;
+  const [_, salt, expectedHash] = parts;
+  const computed = scryptSync(password, salt, 64).toString('hex');
+  return computed === expectedHash;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +32,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DATA_FILE = path.join(__dirname, 'data', 'sales.json');
 const EVENTS_FILE = path.join(__dirname, 'data', 'events.json');
+const CREDENTIALS_FILE = path.join(__dirname, 'data', 'credentials.json');
 
 // Ensure a default "Geral" event exists and that existing sales are linked to it
 async function migrateData() {
@@ -105,6 +122,30 @@ async function writeEvents(events) {
     await fs.writeFile(EVENTS_FILE, JSON.stringify(events, null, 2), 'utf-8');
   } catch (error) {
     console.error('Error writing events file:', error.message);
+  }
+}
+
+// Helpers for credentials (local)
+async function readCredentials() {
+  try {
+    const data = await fs.readFile(CREDENTIALS_FILE, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    const initial = {
+      login: hashPassword('radical4321'),
+      deleteEvent: hashPassword('radical017')
+    };
+    await writeCredentials(initial);
+    return initial;
+  }
+}
+
+async function writeCredentials(credentials) {
+  try {
+    await fs.mkdir(path.dirname(CREDENTIALS_FILE), { recursive: true });
+    await fs.writeFile(CREDENTIALS_FILE, JSON.stringify(credentials, null, 2), 'utf-8');
+  } catch (error) {
+    console.error('Error writing credentials file:', error.message);
   }
 }
 

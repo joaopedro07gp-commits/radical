@@ -282,10 +282,22 @@ document.addEventListener('DOMContentLoaded', () => {
       deleteBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const passwordInput = prompt(`Para excluir o evento "${ev.name}", digite a senha de confirmação:`);
-        if (passwordInput === null) return; // Cancelado
+        if (passwordInput === null) return;
 
-        if (passwordInput !== 'radical') {
-          alert('Senha incorreta. O evento não foi excluído.');
+        try {
+          const response = await secureFetch('/api/verify-delete', {
+            method: 'POST',
+            body: JSON.stringify({ password: passwordInput })
+          });
+
+          if (!response.ok) {
+            const data = await response.json();
+            alert(data.error || 'Senha incorreta. O evento não foi excluído.');
+            return;
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Erro ao verificar senha.');
           return;
         }
 

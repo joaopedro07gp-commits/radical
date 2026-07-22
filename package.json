@@ -7,7 +7,8 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "vercel-dev": "vercel dev",
-    "migrate": "node scripts/migrate-to-firestore.js"
+    "migrate": "node scripts/migrate-to-firestore.js",
+    "migrate-credentials": "node scripts/migrate-credentials.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
