@@ -13,7 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
     showAllSales: false,
     editingSaleId: null,
     selectedInstallments: null,
-    currentPhoto: null
+    currentPhoto: null,
+    notes: ''
   };
 
   // --- DOM ELEMENTS ---
@@ -68,6 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const newSaleForm = document.getElementById('new-sale-form');
   const saleProductSelect = document.getElementById('sale-product');
   const saleValueInput = document.getElementById('sale-value-input');
+  const saleNotes = document.getElementById('sale-notes');
   const locationPills = document.querySelectorAll('.location-pill');
   const paymentCards = document.querySelectorAll('.payment-card');
   const photoCaptureCard = document.getElementById('photo-capture-card');
@@ -474,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="sales-details">
           <div class="product-name">${escapeHTML(sale.product)}</div>
           <div class="product-price">${sale.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+          ${sale.notes ? `<div class="product-notes">${escapeHTML(sale.notes)}</div>` : ''}
         </div>
         <div class="sales-meta">
           <span class="loc-badge ${locationClass}">${escapeHTML(sale.location)}</span>
@@ -536,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="location-item-right">
               <span class="location-item-payment">${escapeHTML(item.payment)}${item.installments ? ' ' + item.installments + 'x' : ''}</span>
               <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              ${item.notes ? `<span class="location-item-note">${escapeHTML(item.notes)}</span>` : ''}
             </div>
           </div>
         `;
@@ -728,7 +732,8 @@ document.addEventListener('DOMContentLoaded', () => {
       payment: state.selectedPayment,
       installments: state.selectedPayment === 'PARCELADO' ? (state.selectedInstallments || 1) : null,
       eventId: state.currentEventId,
-      photo: state.currentPhoto
+      photo: state.currentPhoto,
+      notes: saleNotes ? saleNotes.value.trim() : ''
     };
 
     const isEditing = state.editingSaleId !== null;
@@ -748,8 +753,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Reset form
       saleValueInput.value = 'R$ 0,00';
+      saleNotes.value = '';
       state.editingSaleId = null;
       state.currentPhoto = null;
+      state.notes = '';
       photoPreview.src = '';
       photoPreview.classList.add('hidden');
       photoPlaceholder.classList.remove('hidden');

@@ -981,6 +981,29 @@ body {
   transition: border-color .2s;
 }
 .form-input:focus { border-color: var(--accent-red); }
+textarea.form-input { resize: vertical; min-height: 60px; }
+.product-notes { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.location-item-note { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* ======================================================
+   7e. OBSERVATIONS
+   ====================================================== */
+.observations-textarea {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  padding: 14px 16px;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  min-height: 80px;
+  resize: vertical;
+}
+.observations-textarea:focus { border-color: var(--accent-red); }
+.observations-textarea::placeholder { color: var(--text-muted); }
 
 /* Header "switch event" button */
 .event-switch-btn {

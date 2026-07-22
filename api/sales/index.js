@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   // POST /api/sales  →  create a new sale
   // ──────────────────────────────────────────
   if (req.method === 'POST') {
-    const { product, value, location, payment, eventId, installments, photo } = req.body;
+    const { product, value, location, payment, eventId, installments, photo, notes } = req.body;
 
     if (!product || !value || !location || !payment) {
       return res.status(400).json({ error: 'Parâmetros obrigatórios ausentes.' });
@@ -57,6 +57,7 @@ export default async function handler(req, res) {
         installments: installments ?? null,
         eventId: resolvedEventId,
         photo: photo ?? null,
+        notes: notes ?? '',
         date: new Date().toISOString(),
       };
 

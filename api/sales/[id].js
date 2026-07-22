@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   // PATCH /api/sales/:id  →  update a sale
   // ──────────────────────────────────────────
   if (req.method === 'PATCH') {
-    const { product, value, location, payment, eventId, installments, photo } = req.body;
+    const { product, value, location, payment, eventId, installments, photo, notes } = req.body;
 
     try {
       const doc = await docRef.get();
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
       if (eventId !== undefined)      updates.eventId = eventId;
       if (installments !== undefined) updates.installments = installments;
       if (photo !== undefined)        updates.photo = photo;
+      if (notes !== undefined)        updates.notes = notes;
 
       await docRef.update(updates);
 
