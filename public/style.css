@@ -457,32 +457,6 @@ body {
   margin-bottom: 8px;
 }
 
-.live-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(255,76,48,0.08);
-  border: 1px solid rgba(255,76,48,0.18);
-  padding: 3px 10px;
-  border-radius: 50px;
-  color: var(--accent-red);
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.live-dot {
-  width: 6px; height: 6px;
-  background: var(--accent-red);
-  border-radius: 50%;
-  box-shadow: 0 0 6px var(--accent-red);
-}
-
-@keyframes pulse {
-  0%,100% { opacity: .5; transform: scale(1); }
-  50%      { opacity: 1;  transform: scale(1.25); }
-}
-.animate-pulse { animation: pulse 1.5s infinite ease-in-out; }
-
 .summary-value {
   font-family: var(--font-display);
   font-size: clamp(26px, 5vw, 36px);
