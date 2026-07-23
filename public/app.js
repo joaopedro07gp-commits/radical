@@ -535,42 +535,15 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
       <button type="button" class="locations-reset-btn" id="locations-reset-btn" style="display:none;">MOSTRAR TODAS AS FILIAIS</button>
+      <div class="location-groups-wrapper"></div>
     `;
-    Object.keys(grouped).forEach(loc => {
-      const data = grouped[loc];
-      html += `
-        <div class="location-group">
-          <div class="location-header">
-            <span class="location-name">${escapeHTML(loc)}</span>
-            <span class="location-total">${data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-          </div>
-          <div class="location-items">
-      `;
-      data.items.forEach(item => {
-        html += `
-          <div class="location-item">
-            <div class="location-item-left">
-              ${item.photo ? `<img class="location-item-photo" src="${item.photo}" alt="${escapeHTML(item.product)}">` : `<i data-lucide="bike" class="location-item-icon"></i>`}
-              <div class="location-item-info">
-                <span class="location-item-name">${escapeHTML(item.product)}</span>
-                ${item.notes ? `<span class="location-item-note">${escapeHTML(item.notes)}</span>` : ''}
-              </div>
-            </div>
-            <div class="location-item-right">
-              <span class="location-item-payment">${escapeHTML(item.payment)}${item.installments ? ' ' + item.installments + 'x' : ''}</span>
-              <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-            </div>
-          </div>
-        `;
-      });
-      html += `</div></div>`;
-    });
 
     locationsModalBody.innerHTML = html;
     locationsModal.classList.add('active');
 
     const resetBtn = document.getElementById('locations-reset-btn');
     const summaryItems = locationsModalBody.querySelectorAll('.locations-summary-item');
+    const groupsWrapper = locationsModalBody.querySelector('.location-groups-wrapper');
 
     function renderFiltered() {
       const locationsToRender = activeLocation ? [activeLocation] : Object.keys(grouped);
@@ -605,12 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         newHtml += `</div></div>`;
       });
-      const existingItems = locationsModalBody.querySelector('.location-groups-wrapper');
-      if (existingItems) existingItems.remove();
-      const wrapper = document.createElement('div');
-      wrapper.className = 'location-groups-wrapper';
-      wrapper.innerHTML = newHtml;
-      locationsModalBody.appendChild(wrapper);
+      groupsWrapper.innerHTML = newHtml;
       lucide.createIcons();
     }
 
