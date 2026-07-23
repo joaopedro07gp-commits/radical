@@ -238,9 +238,14 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 999px;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  margin-top: auto;
+  margin-bottom: 12px;
 }
 .theme-toggle-btn:hover {
   border-color: var(--accent-red);
