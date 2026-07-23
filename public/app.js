@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const dashboardTotal = document.getElementById('dashboard-total');
   const salesListContainer = document.getElementById('sales-list-container');
   const btnVerTudo = document.getElementById('btn-ver-tudo');
+  const dashboardSearch = document.getElementById('dashboard-search');
 
   // Locations detail modal
   const locationsModal = document.getElementById('locations-modal');
@@ -431,8 +432,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderDashboard() {
     // 1. Calculate stats
-    const total = state.sales.reduce((sum, s) => sum + s.value, 0);
-    const count = state.sales.length;
+    const query = (dashboardSearch ? dashboardSearch.value.trim() : '').toLowerCase();
+    const baseSales = state.sales || [];
+    const filteredSales = query ? baseSales.filter(s => (s.product || '').toLowerCase().includes(query)) : baseSales;
+    const total = filteredSales.reduce((sum, s) => sum + s.value, 0);
+    const count = filteredSales.length;
 
     dashboardTotal.textContent = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     if (dashboardCount) dashboardCount.textContent = count;
@@ -441,8 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
     salesListContainer.innerHTML = '';
     
     // Determine limit
-    const renderLimit = state.showAllSales ? state.sales.length : 4;
-    const itemsToRender = state.sales.slice(0, renderLimit);
+    const renderLimit = state.showAllSales ? filteredSales.length : 4;
+    const itemsToRender = filteredSales.slice(0, renderLimit);
 
     if (itemsToRender.length === 0) {
       salesListContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhuma venda registrada.</div>`;
@@ -690,12 +694,19 @@ document.addEventListener('DOMContentLoaded', () => {
     switchScreen('new-sale');
   }
 
-  // Toggle show all
-  btnVerTudo.addEventListener('click', () => {
-    state.showAllSales = !state.showAllSales;
-    btnVerTudo.textContent = state.showAllSales ? 'VER MENOS' : 'VER TUDO';
-    renderDashboard();
-  });
+  if (btnVerTudo) {
+    btnVerTudo.addEventListener('click', () => {
+      state.showAllSales = !state.showAllSales;
+      btnVerTudo.textContent = state.showAllSales ? 'VER MENOS' : 'VER TUDO';
+      renderDashboard();
+    });
+  }
+
+  if (dashboardSearch) {
+    dashboardSearch.addEventListener('input', () => {
+      renderDashboard();
+    });
+  }
 
   // --- NEW SALE FORM HANDLERS ---
 

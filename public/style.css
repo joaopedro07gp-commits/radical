@@ -465,6 +465,35 @@ body {
 }
 
 /* --- Sales Section --- */
+.dashboard-search { margin-bottom: 18px; }
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-box-icon {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+.search-box input {
+  width: 100%;
+  background: var(--bg-panel);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  padding: 14px 14px 14px 42px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  outline: none;
+  transition: border-color .2s;
+}
+.search-box input:focus { border-color: var(--accent-red); }
+.search-box input::placeholder { color: var(--text-muted); }
+
 .sales-feed-section { display: flex; flex-direction: column; flex-grow: 1; }
 
 .feed-header {
