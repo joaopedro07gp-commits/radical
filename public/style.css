@@ -213,9 +213,22 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
+  gap: 12px;
 }
 
-.menu-trigger-btn, .logout-btn {
+.header-logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 16px;
+  font-style: italic;
+  letter-spacing: 0.5px;
+}
+
+.app-header button {
+  flex-shrink: 0;
+}
+
+.logout-btn {
   background: transparent;
   border: none;
   color: var(--text-main);
@@ -223,10 +236,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 6px;
 }
-
-.menu-trigger-btn i { width: 24px; height: 24px; }
 .logout-btn i       { width: 20px; height: 20px; color: var(--text-muted); }
 .logout-btn:hover i { color: var(--accent-red); }
 
@@ -238,44 +249,23 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px;
+  gap: 6px;
+  padding: 8px 10px;
   border-radius: 10px;
 }
 .theme-toggle-btn:hover { border-color: var(--accent-red); color: var(--accent-red); }
 .theme-toggle-btn i { width: 18px; height: 18px; }
 
-.theme-toggle-btn {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--text-main);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: var(--radius-md);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 13px;
-  margin-top: auto;
-  margin-bottom: 12px;
-}
-.theme-toggle-btn:hover {
-  border-color: var(--accent-red);
+.event-switch-btn {
+  background: transparent;
+  border: none;
   color: var(--accent-red);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 4px;
 }
-.theme-icon-sun { width: 18px; height: 18px; }
-.theme-icon-moon { width: 18px; height: 18px; }
-
-.header-logo {
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 16px;
-  font-style: italic;
-  letter-spacing: 0.5px;
-}
+.event-switch-btn i { width: 20px; height: 20px; }
+.event-switch-btn:hover { color: var(--accent-red-hover); }
 
 /* On desktop, hide the mobile header — sidebar handles branding */
 @media (min-width: 1024px) {
