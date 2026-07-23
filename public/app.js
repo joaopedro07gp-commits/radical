@@ -573,9 +573,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const summaryItems = locationsModalBody.querySelectorAll('.locations-summary-item');
 
     function renderFiltered() {
-      const filteredLocations = activeLocation ? [activeLocation] : Object.keys(grouped);
+      const locationsToRender = activeLocation ? [activeLocation] : Object.keys(grouped);
       let newHtml = '';
-      filteredLocations.forEach(loc => {
+      locationsToRender.forEach(loc => {
         const data = grouped[loc];
         if (!data) return;
         newHtml += `
@@ -587,7 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="location-items">
         `;
         data.items.forEach(item => {
-          if (activeLocation && item.location !== activeLocation) return;
           newHtml += `
             <div class="location-item">
               <div class="location-item-left">
