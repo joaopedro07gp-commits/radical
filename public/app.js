@@ -754,6 +754,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!response.ok) throw new Error('Failed to save sale');
 
       // Reset form
+      saleProductSelect.value = '';
       saleValueInput.value = 'R$ 0,00';
       saleNotes.value = '';
       state.editingSaleId = null;
