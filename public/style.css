@@ -1114,6 +1114,35 @@ textarea.form-input { resize: vertical; min-height: 60px; }
   font-weight: 800;
   color: var(--text-main);
 }
+.locations-summary-item {
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.locations-summary-item:hover {
+  border-color: rgba(255,76,48,0.4);
+  background: rgba(255,76,48,0.04);
+}
+.locations-summary-item.active {
+  border-color: var(--accent-red);
+  background: rgba(255,76,48,0.08);
+}
+.locations-reset-btn {
+  width: 100%;
+  margin-bottom: 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-muted);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.locations-reset-btn:hover {
+  border-color: var(--accent-red);
+  color: var(--text-main);
+}
 @media (max-width: 480px) {
   .locations-summary {
     grid-template-columns: 1fr;

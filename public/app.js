@@ -518,21 +518,23 @@ document.addEventListener('DOMContentLoaded', () => {
       grouped[s.location].items.push(s);
     });
 
+    let activeLocation = null;
     let html = `
       <div class="locations-summary">
-        <div class="locations-summary-item">
+        <div class="locations-summary-item" data-location="Jales">
           <span class="locations-summary-label">Jales</span>
           <span class="locations-summary-value">${(grouped['Jales']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
         </div>
-        <div class="locations-summary-item">
+        <div class="locations-summary-item" data-location="Votuporanga">
           <span class="locations-summary-label">Votuporanga</span>
           <span class="locations-summary-value">${(grouped['Votuporanga']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
         </div>
-        <div class="locations-summary-item">
+        <div class="locations-summary-item" data-location="Rio Preto">
           <span class="locations-summary-label">Rio Preto</span>
           <span class="locations-summary-value">${(grouped['Rio Preto']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
         </div>
       </div>
+      <button type="button" class="locations-reset-btn" id="locations-reset-btn" style="display:none;">MOSTRAR TODAS AS FILIAIS</button>
     `;
     Object.keys(grouped).forEach(loc => {
       const data = grouped[loc];
@@ -566,6 +568,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
     locationsModalBody.innerHTML = html;
     locationsModal.classList.add('active');
+
+    const resetBtn = document.getElementById('locations-reset-btn');
+    const summaryItems = locationsModalBody.querySelectorAll('.locations-summary-item');
+
+    function renderFiltered() {
+      const filteredLocations = activeLocation ? [activeLocation] : Object.keys(grouped);
+      let newHtml = '';
+      filteredLocations.forEach(loc => {
+        const data = grouped[loc];
+        if (!data) return;
+        newHtml += `
+          <div class="location-group">
+            <div class="location-header">
+              <span class="location-name">${escapeHTML(loc)}</span>
+              <span class="location-total">${data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            </div>
+            <div class="location-items">
+        `;
+        data.items.forEach(item => {
+          if (activeLocation && item.location !== activeLocation) return;
+          newHtml += `
+            <div class="location-item">
+              <div class="location-item-left">
+                ${item.photo ? `<img class="location-item-photo" src="${item.photo}" alt="${escapeHTML(item.product)}">` : `<i data-lucide="bike" class="location-item-icon"></i>`}
+                <div class="location-item-info">
+                  <span class="location-item-name">${escapeHTML(item.product)}</span>
+                  ${item.notes ? `<span class="location-item-note">${escapeHTML(item.notes)}</span>` : ''}
+                </div>
+              </div>
+              <div class="location-item-right">
+                <span class="location-item-payment">${escapeHTML(item.payment)}${item.installments ? ' ' + item.installments + 'x' : ''}</span>
+                <span class="location-item-value">${item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+              </div>
+            </div>
+          `;
+        });
+        newHtml += `</div></div>`;
+      });
+      const existingItems = locationsModalBody.querySelector('.location-groups-wrapper');
+      if (existingItems) existingItems.remove();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'location-groups-wrapper';
+      wrapper.innerHTML = newHtml;
+      locationsModalBody.appendChild(wrapper);
+      lucide.createIcons();
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        activeLocation = null;
+        resetBtn.style.display = 'none';
+        summaryItems.forEach(item => item.classList.remove('active'));
+        renderFiltered();
+      });
+    }
+
+    summaryItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const loc = item.getAttribute('data-location');
+        if (activeLocation === loc) {
+          activeLocation = null;
+          resetBtn.style.display = 'none';
+          summaryItems.forEach(i => i.classList.remove('active'));
+        } else {
+          activeLocation = loc;
+          resetBtn.style.display = 'block';
+          summaryItems.forEach(i => i.classList.toggle('active', i.getAttribute('data-location') === loc));
+        }
+        renderFiltered();
+      });
+    });
+
+    renderFiltered();
   }
 
   function closeLocationsModal() {
