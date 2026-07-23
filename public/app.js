@@ -518,7 +518,22 @@ document.addEventListener('DOMContentLoaded', () => {
       grouped[s.location].items.push(s);
     });
 
-    let html = '';
+    let html = `
+      <div class="locations-summary">
+        <div class="locations-summary-item">
+          <span class="locations-summary-label">Jales</span>
+          <span class="locations-summary-value">${(grouped['Jales']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+        </div>
+        <div class="locations-summary-item">
+          <span class="locations-summary-label">Votuporanga</span>
+          <span class="locations-summary-value">${(grouped['Votuporanga']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+        </div>
+        <div class="locations-summary-item">
+          <span class="locations-summary-label">Rio Preto</span>
+          <span class="locations-summary-value">${(grouped['Rio Preto']?.total || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+        </div>
+      </div>
+    `;
     Object.keys(grouped).forEach(loc => {
       const data = grouped[loc];
       html += `
