@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const navBtnNewSale = document.getElementById('nav-btn-new-sale');
   const fabAddSaleBtn = document.getElementById('fab-add-sale-btn');
   const btnLogoutHeader = document.getElementById('btn-logout-header');
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
   // Desktop sidebar elements
   const sidebarNavBtns = document.querySelectorAll('.sidebar-nav-btn');
@@ -126,6 +127,32 @@ document.addEventListener('DOMContentLoaded', () => {
       salesEventSource = null;
     }
   }
+
+  // Theme mode
+  const THEME_KEY = 'radical-theme';
+  function applyTheme(theme) {
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
+  }
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved) {
+      applyTheme(saved);
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+      applyTheme('light');
+    }
+  }
+  function toggleTheme() {
+    const isLight = document.body.classList.contains('light-mode');
+    const next = isLight ? 'dark' : 'light';
+    applyTheme(next);
+    localStorage.setItem(THEME_KEY, next);
+  }
+  initTheme();
+  if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
 
   // --- AUTHENTICATION ---
   // Helper to fetch with auth token
