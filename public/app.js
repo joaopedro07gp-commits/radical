@@ -156,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
           loadEvents();
         }, 380);
       } else {
+        const errData = await response.json().catch(() => ({}));
+        loginError.textContent = errData.error || 'Senha incorreta.';
         loginError.style.display = 'block';
         loginPassword.value = '';
       }
