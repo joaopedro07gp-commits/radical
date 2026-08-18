@@ -673,8 +673,20 @@ document.addEventListener('DOMContentLoaded', () => {
         data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       ]);
 
+      const applyAutoTable = (opts) => {
+        if (typeof doc.autoTable === 'function') {
+          doc.autoTable(opts);
+        } else if (typeof window.jspdfAutoTable === 'function') {
+          window.jspdfAutoTable(doc, opts);
+        } else if (typeof window.autoTable === 'function') {
+          window.autoTable(doc, opts);
+        } else if (window.jspdf?.autoTable) {
+          window.jspdf.autoTable(doc, opts);
+        }
+      };
+
       // Tabela Filiais
-      doc.autoTable({
+      applyAutoTable({
         startY: 78,
         margin: { left: 14, right: 110 },
         head: [['Filial', 'Qtd', 'Total']],
@@ -689,10 +701,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      const afterLocY = doc.lastAutoTable.finalY;
+      const afterLocY = doc.lastAutoTable?.finalY || 115;
 
       // Tabela Formas de Pagamento
-      doc.autoTable({
+      applyAutoTable({
         startY: 78,
         margin: { left: 110, right: 14 },
         head: [['Forma de Pagamento', 'Qtd', 'Total']],
@@ -707,7 +719,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
-      const afterPayY = doc.lastAutoTable.finalY;
+      const afterPayY = doc.lastAutoTable?.finalY || 115;
       const startDetailsY = Math.max(afterLocY, afterPayY) + 10;
 
       // ── TABELA DETALHADA DE VENDAS ──
@@ -735,7 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
       });
 
-      doc.autoTable({
+      applyAutoTable({
         startY: startDetailsY,
         margin: { left: 14, right: 14 },
         head: [['#', 'Data/Hora', 'Produto / Capacete', 'Filial', 'Pagamento', 'Observações', 'Valor']],
@@ -766,18 +778,22 @@ document.addEventListener('DOMContentLoaded', () => {
           4: { halign: 'center', cellWidth: 26 },
           5: { fontSize: 7.5 },
           6: { halign: 'right', fontStyle: 'bold', cellWidth: 26 }
-        },
-        didDrawPage: function(data) {
-          const pageCount = doc.internal.getNumberOfPages();
-          doc.setFontSize(8);
-          doc.setTextColor(150);
-          doc.text(
-            `Radical Capacetes • Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${pageCount}`,
-            14,
-            290
-          );
         }
       });
+
+      // ── NUMERAÇÃO DAS PÁGINAS NO RODAPÉ ──
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(
+          `Radical Capacetes • Página ${p} de ${totalPages}`,
+          14,
+          290
+        );
+      }
 
       const safeName = (eventName || 'Evento').replace(/[^a-zA-Z0-9_-]/g, '_');
       const fileDate = now.toISOString().slice(0, 10);
