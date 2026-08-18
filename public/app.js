@@ -576,100 +576,34 @@ document.addEventListener('DOMContentLoaded', () => {
       // Cálculos gerais
       const totalValue = sales.reduce((acc, s) => acc + (parseFloat(s.value) || 0), 0);
       const totalCount = sales.length;
-      const ticketMedio = totalCount > 0 ? (totalValue / totalCount) : 0;
-
-      // Agrupamento por Filial
-      const byLoc = {};
-      sales.forEach(s => {
-        const loc = s.location || 'Outros';
-        if (!byLoc[loc]) byLoc[loc] = { count: 0, total: 0 };
-        byLoc[loc].count += 1;
-        byLoc[loc].total += (parseFloat(s.value) || 0);
-      });
-
-      // Agrupamento por Forma de Pagamento
-      const byPay = {};
-      sales.forEach(s => {
-        const pay = s.payment || 'Outros';
-        if (!byPay[pay]) byPay[pay] = { count: 0, total: 0 };
-        byPay[pay].count += 1;
-        byPay[pay].total += (parseFloat(s.value) || 0);
-      });
 
       const now = new Date();
       const dataHoraStr = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
       // ── CABEÇALHO COM BRANDING RADICAL ──
       doc.setFillColor(196, 24, 10); // Vermelho Radical
-      doc.rect(0, 0, 210, 30, 'F');
+      doc.rect(0, 0, 210, 26, 'F');
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(18);
+      doc.setFontSize(16);
       doc.setTextColor(255, 255, 255);
-      doc.text('RADICAL CAPACETES', 14, 14);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9.5);
-      doc.setTextColor(255, 220, 215);
-      doc.text('RELATÓRIO DE FECHAMENTO DE EVENTO', 14, 22);
-
-      // ── INFORMAÇÕES DO EVENTO ──
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(13);
-      doc.setTextColor(30, 30, 30);
-      doc.text(`EVENTO: ${eventName.toUpperCase()}`, 14, 40);
+      doc.text('RADICAL CAPACETES', 14, 11);
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
+      doc.setTextColor(255, 225, 220);
+      doc.text(`RELATÓRIO DETALHADO DE VENDAS • EVENTO: ${eventName.toUpperCase()}`, 14, 19);
+
+      // Sub-cabeçalho com dados de emissão e totais
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(40, 40, 40);
+      doc.text(`Total de Vendas: ${totalCount} produto(s)   |   Faturamento Total: ${totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`, 14, 33);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
       doc.setTextColor(110, 110, 110);
-      doc.text(`Data de Emissão: ${dataHoraStr}`, 14, 46);
-
-      // ── CARDS DE RESUMO (KPIS) ──
-      // Total Geral
-      doc.setFillColor(245, 245, 248);
-      doc.roundedRect(14, 51, 58, 22, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 130);
-      doc.text('TOTAL FATURADO', 18, 58);
-      doc.setFontSize(12);
-      doc.setTextColor(196, 24, 10);
-      doc.text(totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 18, 67);
-
-      // Total Pedidos
-      doc.setFillColor(245, 245, 248);
-      doc.roundedRect(76, 51, 58, 22, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 130);
-      doc.text('TOTAL DE VENDAS', 80, 58);
-      doc.setFontSize(12);
-      doc.setTextColor(30, 30, 30);
-      doc.text(`${totalCount} capacete(s)`, 80, 67);
-
-      // Ticket Médio
-      doc.setFillColor(245, 245, 248);
-      doc.roundedRect(138, 51, 58, 22, 2, 2, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(120, 120, 130);
-      doc.text('TICKET MÉDIO', 142, 58);
-      doc.setFontSize(12);
-      doc.setTextColor(30, 30, 30);
-      doc.text(ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 142, 67);
-
-      // ── TABELAS RESUMO (FILIAIS E FORMAS DE PAGAMENTO) ──
-      const locRows = Object.entries(byLoc).map(([loc, data]) => [
-        loc,
-        `${data.count} un`,
-        data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-      ]);
-
-      const payRows = Object.entries(byPay).map(([pay, data]) => [
-        pay,
-        `${data.count} un`,
-        data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-      ]);
+      doc.text(`Emitido em: ${dataHoraStr}`, 14, 38);
 
       const applyAutoTable = (opts) => {
         if (typeof doc.autoTable === 'function') {
@@ -683,99 +617,83 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       };
 
-      // Tabela Filiais
-      applyAutoTable({
-        startY: 78,
-        margin: { left: 14, right: 110 },
-        head: [['Filial', 'Qtd', 'Total']],
-        body: locRows,
-        theme: 'grid',
-        headStyles: { fillColor: [45, 45, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-        bodyStyles: { fontSize: 8, textColor: [40, 40, 40] },
-        columnStyles: {
-          0: { cellWidth: 'auto' },
-          1: { halign: 'center', cellWidth: 16 },
-          2: { halign: 'right', fontStyle: 'bold' }
-        }
-      });
-
-      const afterLocY = doc.lastAutoTable?.finalY || 115;
-
-      // Tabela Formas de Pagamento
-      applyAutoTable({
-        startY: 78,
-        margin: { left: 110, right: 14 },
-        head: [['Forma de Pagamento', 'Qtd', 'Total']],
-        body: payRows,
-        theme: 'grid',
-        headStyles: { fillColor: [45, 45, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-        bodyStyles: { fontSize: 8, textColor: [40, 40, 40] },
-        columnStyles: {
-          0: { cellWidth: 'auto' },
-          1: { halign: 'center', cellWidth: 16 },
-          2: { halign: 'right', fontStyle: 'bold' }
-        }
-      });
-
-      const afterPayY = doc.lastAutoTable?.finalY || 115;
-      const startDetailsY = Math.max(afterLocY, afterPayY) + 10;
-
-      // ── TABELA DETALHADA DE VENDAS ──
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(30, 30, 30);
-      doc.text('DETALHAMENTO DE TODAS AS VENDAS', 14, startDetailsY - 3);
-
+      // ── TABELA COM TODOS OS PRODUTOS E DETALHES COMPLETOS (INCLUINDO FOTO) ──
       const salesTableBody = sales.map((sale, index) => {
         let dataStr = '-';
         if (sale.date) {
           const d = new Date(sale.date);
-          dataStr = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          dataStr = d.toLocaleDateString('pt-BR') + '\n' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
-        const paymentStr = (sale.payment || '-') + (sale.installments ? ` (${sale.installments}x)` : '');
+        const paymentStr = (sale.payment || '-') + (sale.installments ? `\n(${sale.installments}x)` : '');
         const valStr = (parseFloat(sale.value) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const hasPhoto = sale.photo && typeof sale.photo === 'string' && sale.photo.startsWith('data:image');
+
         return [
           String(index + 1),
-          dataStr,
+          hasPhoto ? '' : 'Sem foto',
           sale.product || 'Capacete',
-          sale.location || '-',
+          valStr,
           paymentStr,
+          sale.location || '-',
           sale.notes || '-',
-          valStr
+          dataStr
         ];
       });
 
       applyAutoTable({
-        startY: startDetailsY,
-        margin: { left: 14, right: 14 },
-        head: [['#', 'Data/Hora', 'Produto / Capacete', 'Filial', 'Pagamento', 'Observações', 'Valor']],
+        startY: 43,
+        margin: { left: 12, right: 12 },
+        head: [['#', 'Foto', 'Nome do Produto', 'Valor', 'Pagamento', 'Filial', 'Descrição / Observações', 'Data/Hora']],
         body: salesTableBody,
-        foot: [['', '', 'TOTAL GERAL', '', `${totalCount} itens`, '', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]],
+        foot: [['', '', 'TOTAL DO EVENTO', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), '', '', `${totalCount} itens vendidos`, '']],
         theme: 'striped',
         headStyles: {
           fillColor: [196, 24, 10],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
-          fontSize: 8.5
+          fontSize: 8,
+          halign: 'center'
         },
         footStyles: {
           fillColor: [240, 240, 245],
           textColor: [196, 24, 10],
           fontStyle: 'bold',
-          fontSize: 9.5
+          fontSize: 8.5
         },
         bodyStyles: {
-          fontSize: 8,
-          textColor: [40, 40, 40]
+          fontSize: 7.5,
+          textColor: [35, 35, 35],
+          valign: 'middle',
+          minCellHeight: 17
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 8 },
-          1: { cellWidth: 26, fontSize: 7.5 },
-          2: { fontStyle: 'bold' },
-          3: { halign: 'center', cellWidth: 24 },
-          4: { halign: 'center', cellWidth: 26 },
-          5: { fontSize: 7.5 },
-          6: { halign: 'right', fontStyle: 'bold', cellWidth: 26 }
+          0: { halign: 'center', cellWidth: 7 },
+          1: { halign: 'center', cellWidth: 18 },
+          2: { fontStyle: 'bold', cellWidth: 36 },
+          3: { halign: 'right', fontStyle: 'bold', textColor: [196, 24, 10], cellWidth: 22 },
+          4: { halign: 'center', cellWidth: 24 },
+          5: { halign: 'center', cellWidth: 18 },
+          6: { cellWidth: 'auto', fontSize: 7 },
+          7: { halign: 'center', cellWidth: 20, fontSize: 6.5 }
+        },
+        didDrawCell: function(data) {
+          // Renderizar foto dentro da célula de imagem se houver
+          if (data.column.index === 1 && data.cell.section === 'body') {
+            const sale = sales[data.row.index];
+            if (sale && sale.photo && typeof sale.photo === 'string' && sale.photo.startsWith('data:image')) {
+              try {
+                let fmt = 'JPEG';
+                if (sale.photo.includes('image/png')) fmt = 'PNG';
+                else if (sale.photo.includes('image/webp')) fmt = 'WEBP';
+                const imgSize = 13; // 13mm
+                const posX = data.cell.x + (data.cell.width - imgSize) / 2;
+                const posY = data.cell.y + (data.cell.height - imgSize) / 2;
+                doc.addImage(sale.photo, fmt, posX, posY, imgSize, imgSize);
+              } catch (e) {
+                console.warn('Erro ao inserir foto no PDF:', e);
+              }
+            }
+          }
         }
       });
 
@@ -788,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
         doc.setTextColor(150, 150, 150);
         doc.text(
           `Radical Capacetes • Página ${p} de ${totalPages}`,
-          14,
+          12,
           290
         );
       }
