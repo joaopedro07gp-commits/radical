@@ -26,18 +26,21 @@ export default async function handler(req, res) {
       const url = new URL(req.url, 'http://localhost');
       const eventId = req.query?.eventId || url.searchParams.get('eventId');
 
-      let query = db.collection('sales');
+      let snapshot;
       if (eventId && eventId !== 'all') {
-        // Se eventId for número ou string, suporta ambos
-        query = query.where('eventId', '==', eventId);
+        const numId = Number(eventId);
+        const candidates = [String(eventId)];
+        if (!isNaN(numId) && String(numId) === String(eventId)) {
+          candidates.push(numId);
+        }
+        snapshot = await db.collection('sales').where('eventId', 'in', candidates).get();
       } else {
-        query = query.orderBy('date', 'desc').limit(100);
+        snapshot = await db.collection('sales').get();
       }
 
-      const snapshot = await query.get();
       let sales = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-      // Se filtrou por eventId sem composite index, ordena em memória
+      // Ordenar por data mais recente
       sales.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
       return res.status(200).json(sales);

@@ -266,18 +266,16 @@ document.addEventListener('DOMContentLoaded', () => {
       pdfBtn.innerHTML = `<i data-lucide="file-text"></i>`;
       pdfBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
+        pdfBtn.disabled = true;
         try {
-          let eventSales = [];
-          if (state.currentEventId !== null && String(state.currentEventId) === String(ev.id) && state.sales?.length) {
-            eventSales = state.sales;
-          } else {
-            const response = await secureFetch(`/api/sales?eventId=${encodeURIComponent(ev.id)}`);
-            if (!response.ok) throw new Error('Erro ao buscar vendas');
-            eventSales = await response.json();
-          }
-          exportEventPDF(ev.id, ev.name, eventSales);
+          const response = await secureFetch(`/api/sales?eventId=${encodeURIComponent(ev.id)}`);
+          if (!response.ok) throw new Error('Erro ao buscar vendas do evento');
+          const eventSales = await response.json();
+          await exportEventPDF(ev.id, ev.name, eventSales);
         } catch (err) {
           alert('Erro ao carregar vendas do evento: ' + err.message);
+        } finally {
+          pdfBtn.disabled = false;
         }
       });
       cardWrapper.appendChild(pdfBtn);
@@ -807,10 +805,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Finalizar evento button handler
   if (btnFinalizeEvent) {
-    btnFinalizeEvent.addEventListener('click', () => {
-      const ev = state.events.find(e => String(e.id) === String(state.currentEventId));
-      const eventName = ev ? ev.name : (dashboardEventName ? dashboardEventName.textContent : 'Geral');
-      exportEventPDF(state.currentEventId, eventName, state.sales);
+    btnFinalizeEvent.addEventListener('click', async () => {
+      btnFinalizeEvent.disabled = true;
+      try {
+        const ev = state.events.find(e => String(e.id) === String(state.currentEventId));
+        const eventName = ev ? ev.name : (dashboardEventName ? dashboardEventName.textContent : 'Geral');
+        const response = await secureFetch(`/api/sales?eventId=${encodeURIComponent(state.currentEventId)}`);
+        const eventSales = response.ok ? await response.json() : state.sales;
+        await exportEventPDF(state.currentEventId, eventName, eventSales);
+      } catch (err) {
+        alert('Erro ao carregar vendas do evento: ' + err.message);
+      } finally {
+        btnFinalizeEvent.disabled = false;
+      }
     });
   }
 
