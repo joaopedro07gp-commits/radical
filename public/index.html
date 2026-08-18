@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪖</text></svg>">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -27,7 +29,7 @@
           <input type="password" id="login-password" placeholder="DIGITE SUA SENHA" autocomplete="off">
         </div>
         <button id="btn-login" class="btn-primary-red">ENTRAR</button>
-        <div id="login-error" class="login-error-msg" style="display:none;">Senha incorreta. Tente 1234.</div>
+        <div id="login-error" class="login-error-msg" style="display:none;">Senha incorreta.</div>
       </div>
     </div>
   </div>
@@ -130,6 +132,24 @@
              DASHBOARD VIEW
              ===================== -->
         <div id="screen-dashboard" class="app-screen-content active">
+
+          <!-- Current Event & Action Bar -->
+          <div class="dashboard-event-bar">
+            <div class="event-bar-info">
+              <span class="event-badge"><i data-lucide="layers"></i> EVENTO ATIVO</span>
+              <h2 class="event-current-name" id="dashboard-event-name">Geral</h2>
+            </div>
+            <div class="dashboard-event-actions">
+              <button class="btn-refresh-data" id="btn-refresh-data" title="Sincronizar dados deste evento">
+                <i data-lucide="rotate-cw"></i>
+                <span>ATUALIZAR</span>
+              </button>
+              <button class="btn-finalize-event" id="btn-finalize-event" title="Finalizar Evento e Gerar Relatório em PDF">
+                <i data-lucide="file-check"></i>
+                <span>FINALIZAR EVENTO (PDF)</span>
+              </button>
+            </div>
+          </div>
 
           <!-- Stats row -->
           <div class="dashboard-stats-row">
@@ -293,6 +313,6 @@
     <img class="photo-zoom-img" id="photo-zoom-img" src="" alt="Zoom">
   </div>
 
-  <script src="app.js?v=20240717b"></script>
+  <script src="app.js?v=20260817c"></script>
 </body>
 </html>

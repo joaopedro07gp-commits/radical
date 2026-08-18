@@ -1,32 +1,45 @@
+/**
+ * api/events/[id].js
+ * DELETE /api/events/:id → excluir evento e todas as suas vendas
+ */
 import { db } from '../../lib/firebase.js';
 import { validateAuth } from '../../lib/auth.js';
+import { setCorsHeaders, handlePreflight } from '../../lib/cors.js';
+import { auditLog } from '../../lib/logger.js';
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  setCorsHeaders(req, res, 'DELETE, OPTIONS');
+  if (handlePreflight(req, res)) return;
 
-  // Validate Authentication Token
+  // Validar autenticação JWT
   if (!validateAuth(req)) {
     return res.status(401).json({ error: 'Não autorizado. Faça login novamente.' });
   }
 
   const { id } = req.query;
+  if (!id || typeof id !== 'string') {
+    return res.status(400).json({ error: 'ID do evento é obrigatório.' });
+  }
 
   // ──────────────────────────────────────────
   // DELETE /api/events/:id
-  // Delete the event and its sales.
+  // Exclui o evento e todas as vendas vinculadas.
   // ──────────────────────────────────────────
   if (req.method === 'DELETE') {
     try {
-      const evSnap = await db.collection('events').orderBy('createdAt').get();
-      if (evSnap.empty) {
-        return res.status(404).json({ error: 'Nenhum evento encontrado.' });
+      const eventRef = db.collection('events').doc(id);
+      const eventDoc = await eventRef.get();
+
+      if (!eventDoc.exists) {
+        return res.status(404).json({ error: 'Evento não encontrado.' });
       }
 
-      await db.collection('events').doc(id).delete();
+      const eventName = eventDoc.data()?.name ?? id;
 
+      // Deletar o evento
+      await eventRef.delete();
+
+      // Deletar todas as vendas vinculadas em batch
       const salesSnap = await db
         .collection('sales')
         .where('eventId', '==', id)
@@ -34,12 +47,11 @@ export default async function handler(req, res) {
 
       if (!salesSnap.empty) {
         const batch = db.batch();
-        salesSnap.docs.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
+        salesSnap.docs.forEach((doc) => batch.delete(doc.ref));
         await batch.commit();
       }
 
+      auditLog('EVENT_DELETED', req, { eventId: id, eventName, salesDeleted: salesSnap.size });
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error('DELETE /api/events/:id error:', err);
@@ -47,32 +59,5 @@ export default async function handler(req, res) {
     }
   }
 
-  // ──────────────────────────────────────────
-  // SSE /api/events/stream  →  real-time updates
-  // Usage: /api/events/stream
-  // ──────────────────────────────────────────
-  if (req.url.includes('/stream')) {
-    try {
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders();
-
-      const unsubscribe = db.collection('events').orderBy('createdAt').onSnapshot((snapshot) => {
-        const events = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        res.write(`data: ${JSON.stringify(events)}\n\n`);
-      });
-
-      req.on('close', () => {
-        unsubscribe();
-        res.end();
-      });
-    } catch (err) {
-      console.error('SSE /api/events/stream error:', err);
-      res.status(500).end();
-    }
-    return;
-  }
-
-  return res.status(405).json({ error: 'Method not allowed' });
+  return res.status(405).json({ error: 'Método não permitido.' });
 }

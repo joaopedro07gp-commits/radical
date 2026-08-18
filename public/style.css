@@ -1220,9 +1220,186 @@ textarea.form-input { resize: vertical; min-height: 60px; }
 .location-item-value { color: var(--text-main); font-weight: 700; font-size: 14px; }
 
 /* ======================================================
+   9. EVENT BAR & FINALIZAR EVENTO (PDF)
+   ====================================================== */
+.dashboard-event-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-panel);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 4px solid var(--accent-red);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  gap: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  flex-wrap: wrap;
+}
+
+.event-bar-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 0.8px;
+}
+
+.event-badge i {
+  width: 14px;
+  height: 14px;
+}
+
+.event-current-name {
+  font-family: var(--font-display);
+  font-size: clamp(18px, 3vw, 24px);
+  font-weight: 900;
+  color: var(--text-main);
+}
+
+.btn-finalize-event {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--accent-red) 0%, #b82512 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px var(--accent-red-glow);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.btn-finalize-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px rgba(255, 76, 48, 0.45);
+  filter: brightness(1.1);
+}
+
+.btn-finalize-event:active {
+  transform: translateY(1px);
+}
+
+.btn-finalize-event i {
+  width: 18px;
+  height: 18px;
+}
+
+/* Event cards action buttons on Event Selection Screen */
+.event-pdf-btn, .event-delete-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.08);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.event-pdf-btn i, .event-delete-btn i {
+  width: 18px;
+  height: 18px;
+}
+
+.event-pdf-btn:hover {
+  color: #ffffff;
+  border-color: var(--color-riopreto);
+  background: rgba(0, 122, 255, 0.15);
+}
+
+.event-delete-btn:hover {
+  color: #ffffff;
+  border-color: var(--accent-red);
+  background: rgba(255, 76, 48, 0.15);
+}
+
+.dashboard-event-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-refresh-data {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-panel);
+  color: var(--text-main);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  padding: 12px 18px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-refresh-data:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.btn-refresh-data i {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-refresh-data.spinning i {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 600px) {
+  .dashboard-event-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .dashboard-event-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 8px;
+  }
+  .btn-finalize-event, .btn-refresh-data {
+    width: 100%;
+    padding: 14px 10px;
+  }
+}
+
+/* ======================================================
    8. SCROLLBARS
    ====================================================== */
 ::-webkit-scrollbar            { width: 6px; }
 ::-webkit-scrollbar-track      { background: transparent; }
 ::-webkit-scrollbar-thumb      { background: rgba(255,255,255,.07); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover{ background: var(--accent-red); }
+

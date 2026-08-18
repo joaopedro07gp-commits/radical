@@ -1,29 +1,45 @@
+/**
+ * api/sales/index.js
+ * GET  /api/sales  → lista todas as vendas
+ * POST /api/sales  → cria nova venda
+ */
 import { db } from '../../lib/firebase.js';
 import { validateAuth } from '../../lib/auth.js';
+import { setCorsHeaders, handlePreflight } from '../../lib/cors.js';
+import { auditLog } from '../../lib/logger.js';
+import { validateSale } from '../../lib/validate.js';
 
 export default async function handler(req, res) {
-  // Allow CORS for local dev
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  setCorsHeaders(req, res, 'GET, POST, OPTIONS');
+  if (handlePreflight(req, res)) return;
 
-  // Validate Authentication Token
+  // Validar autenticação JWT
   if (!validateAuth(req)) {
     return res.status(401).json({ error: 'Não autorizado. Faça login novamente.' });
   }
 
   // ──────────────────────────────────────────
-  // GET /api/sales  →  list all sales
+  // GET /api/sales  →  listar vendas (filtradas por evento se informado)
   // ──────────────────────────────────────────
   if (req.method === 'GET') {
     try {
-      const snapshot = await db
-        .collection('sales')
-        .orderBy('date', 'desc')
-        .get();
+      const url = new URL(req.url, 'http://localhost');
+      const eventId = req.query?.eventId || url.searchParams.get('eventId');
 
-      const sales = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      let query = db.collection('sales');
+      if (eventId && eventId !== 'all') {
+        // Se eventId for número ou string, suporta ambos
+        query = query.where('eventId', '==', eventId);
+      } else {
+        query = query.orderBy('date', 'desc').limit(100);
+      }
+
+      const snapshot = await query.get();
+      let sales = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+      // Se filtrou por eventId sem composite index, ordena em memória
+      sales.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
       return res.status(200).json(sales);
     } catch (err) {
       console.error('GET /api/sales error:', err);
@@ -32,26 +48,24 @@ export default async function handler(req, res) {
   }
 
   // ──────────────────────────────────────────
-  // POST /api/sales  →  create a new sale
+  // POST /api/sales  →  criar nova venda
   // ──────────────────────────────────────────
   if (req.method === 'POST') {
-    const { product, value, location, payment, eventId, installments, photo, notes } = req.body;
-
-    if (!product || !value || !location || !payment) {
-      return res.status(400).json({ error: 'Parâmetros obrigatórios ausentes.' });
-    }
-
-    // Resolve eventId: if not provided, use the first event
-    let resolvedEventId = eventId ?? null;
-    if (!resolvedEventId) {
-      const evSnap = await db.collection('events').orderBy('createdAt').limit(1).get();
-      resolvedEventId = evSnap.empty ? null : evSnap.docs[0].id;
-    }
-
     try {
+      // Validação e sanitização do payload
+      const validated = validateSale(req.body, true);
+      const { product, value, location, payment, installments, photo, notes } = validated;
+
+      // Resolver eventId
+      let resolvedEventId = req.body.eventId ?? null;
+      if (!resolvedEventId) {
+        const evSnap = await db.collection('events').orderBy('createdAt').limit(1).get();
+        resolvedEventId = evSnap.empty ? null : evSnap.docs[0].id;
+      }
+
       const newSale = {
         product,
-        value: parseFloat(value),
+        value,
         location,
         payment,
         installments: installments ?? null,
@@ -62,12 +76,14 @@ export default async function handler(req, res) {
       };
 
       const ref = await db.collection('sales').add(newSale);
+      auditLog('SALE_CREATED', req, { saleId: ref.id, product, value });
       return res.status(201).json({ id: ref.id, ...newSale });
     } catch (err) {
+      if (err.status === 400) return res.status(400).json({ error: err.message });
       console.error('POST /api/sales error:', err);
       return res.status(500).json({ error: 'Erro ao criar venda.' });
     }
   }
 
-  return res.status(405).json({ error: 'Method not allowed' });
+  return res.status(405).json({ error: 'Método não permitido.' });
 }

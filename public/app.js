@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Dashboard Elements
   const dashboardTotal = document.getElementById('dashboard-total');
+  const dashboardEventName = document.getElementById('dashboard-event-name');
+  const btnRefreshData = document.getElementById('btn-refresh-data');
+  const btnFinalizeEvent = document.getElementById('btn-finalize-event');
   const salesListContainer = document.getElementById('sales-list-container');
   const btnVerTudo = document.getElementById('btn-ver-tudo');
   const dashboardSearch = document.getElementById('dashboard-search');
@@ -78,55 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const salePhotoInput = document.getElementById('sale-photo-input');
   const photoPreview = document.getElementById('photo-preview');
   const photoPlaceholder = document.getElementById('photo-placeholder');
-
-  // Real-time updates via SSE, fallback to 1s polling
-  let salesEventSource = null;
-  let salesPollInterval = null;
-  function startSalesPolling() {
-    if (salesPollInterval) return;
-    salesPollInterval = setInterval(() => {
-      if (document.visibilityState === 'visible' && state.isAuthenticated) {
-        loadSales();
-      }
-    }, 1000);
-  }
-  function stopSalesPolling() {
-    if (salesPollInterval) {
-      clearInterval(salesPollInterval);
-      salesPollInterval = null;
-    }
-  }
-  function startSalesSSE() {
-    if (salesEventSource) return;
-    const token = localStorage.getItem('radical_token');
-    const eventId = state.currentEventId || '';
-    const url = `/api/sales/stream${eventId ? '?eventId=' + encodeURIComponent(eventId) : ''}${token ? (eventId ? '&token=' : '?token=') + encodeURIComponent(token) : ''}`;
-    try {
-      salesEventSource = new EventSource(url);
-      salesEventSource.onmessage = (e) => {
-        try {
-          const sales = JSON.parse(e.data);
-          state.sales = sales;
-          renderDashboard();
-        } catch (_) {}
-      };
-      salesEventSource.onerror = () => {
-        salesEventSource.close();
-        salesEventSource = null;
-        startSalesPolling();
-      };
-      stopSalesPolling();
-    } catch (_) {
-      salesEventSource = null;
-      startSalesPolling();
-    }
-  }
-  function stopSalesSSE() {
-    if (salesEventSource) {
-      salesEventSource.close();
-      salesEventSource = null;
-    }
-  }
 
   // Theme mode
   const THEME_KEY = 'radical-theme';
@@ -200,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
           screenLogin.style.display = 'none';
           screenEvents.classList.remove('hidden');
           loadEvents();
-          startSalesSSE();
         }, 380);
       } else {
         loginError.style.display = 'block';
@@ -219,9 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function doLogout() {
-    stopSalesSSE();
-    stopSalesPolling();
     state.isAuthenticated = false;
+    state.sales = [];
+    state.currentEventId = null;
     localStorage.removeItem('radical_token');
     // Fade out app, show login
     appWrapper.style.opacity = '0';
@@ -304,6 +257,29 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => enterEvent(ev.id));
       cardWrapper.appendChild(btn);
 
+      // PDF export event button
+      const pdfBtn = document.createElement('button');
+      pdfBtn.className = 'event-pdf-btn';
+      pdfBtn.title = 'Gerar Relatório PDF deste Evento';
+      pdfBtn.innerHTML = `<i data-lucide="file-text"></i>`;
+      pdfBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        try {
+          let eventSales = [];
+          if (state.currentEventId !== null && String(state.currentEventId) === String(ev.id) && state.sales?.length) {
+            eventSales = state.sales;
+          } else {
+            const response = await secureFetch(`/api/sales?eventId=${encodeURIComponent(ev.id)}`);
+            if (!response.ok) throw new Error('Erro ao buscar vendas');
+            eventSales = await response.json();
+          }
+          exportEventPDF(ev.id, ev.name, eventSales);
+        } catch (err) {
+          alert('Erro ao carregar vendas do evento: ' + err.message);
+        }
+      });
+      cardWrapper.appendChild(pdfBtn);
+
       // Delete event button
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'event-delete-btn';
@@ -348,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('Evento excluído com sucesso!');
           if (state.currentEventId !== null && String(state.currentEventId) === String(ev.id)) {
             state.currentEventId = null;
+            state.sales = [];
           }
           loadEvents();
         } catch (err) {
@@ -365,15 +342,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function enterEvent(eventId) {
     state.currentEventId = eventId;
-    stopSalesSSE();
+    const currentEv = state.events.find(e => String(e.id) === String(eventId));
+    if (dashboardEventName) {
+      dashboardEventName.textContent = currentEv ? currentEv.name : 'Geral';
+    }
     screenEvents.classList.add('hidden');
     appWrapper.classList.remove('hidden');
     appWrapper.style.opacity = '0';
     appWrapper.style.transition = 'opacity 0.4s ease';
     requestAnimationFrame(() => { appWrapper.style.opacity = '1'; });
-    await loadSales();
+    await loadSales(eventId);
     switchScreen('dashboard');
-    startSalesSSE();
   }
 
   // New event modal
@@ -420,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
       navBtnNewSale.classList.remove('active');
       // Sync sidebar
       sidebarNavBtns.forEach(b => b.classList.toggle('active', b.getAttribute('data-target') === 'dashboard'));
-      loadSales();
+      renderDashboard();
     } else if (target === 'new-sale') {
       screenNewSale.classList.add('active');
       screenDashboard.classList.remove('active');
@@ -441,16 +420,14 @@ document.addEventListener('DOMContentLoaded', () => {
   fabAddSaleBtn.addEventListener('click', () => switchScreen('new-sale'));
 
   // --- SALES LOADER & RENDERER ---
-  async function loadSales() {
+  async function loadSales(eventId) {
+    const targetEventId = (eventId !== undefined) ? eventId : state.currentEventId;
     try {
-      const response = await secureFetch('/api/sales');
+      const url = targetEventId ? `/api/sales?eventId=${encodeURIComponent(targetEventId)}` : '/api/sales';
+      const response = await secureFetch(url);
       if (!response.ok) throw new Error('Failed to fetch sales');
 
-      const allSales = await response.json();
-      // Filter to the currently selected event
-      state.sales = (state.currentEventId !== null)
-        ? allSales.filter(s => String(s.eventId) === String(state.currentEventId))
-        : allSales;
+      state.sales = await response.json();
       renderDashboard();
     } catch (err) {
       console.error('Error loading sales:', err);
@@ -531,6 +508,253 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update Lucide icons inside list
     lucide.createIcons();
+  }
+
+  // --- FINALIZAR EVENTO & EXPORTAR RELATÓRIO PDF ---
+  function exportEventPDF(eventId, eventName, salesList) {
+    const sales = salesList || [];
+    if (sales.length === 0) {
+      alert(`Nenhuma venda registrada para o evento "${eventName}".`);
+      return;
+    }
+
+    const confirmed = confirm(`Deseja finalizar o evento "${eventName}" e baixar o relatório completo de vendas em PDF?`);
+    if (!confirmed) return;
+
+    try {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert('A biblioteca de geração de PDF ainda está carregando. Tente novamente em alguns instantes.');
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Cálculos gerais
+      const totalValue = sales.reduce((acc, s) => acc + (parseFloat(s.value) || 0), 0);
+      const totalCount = sales.length;
+      const ticketMedio = totalCount > 0 ? (totalValue / totalCount) : 0;
+
+      // Agrupamento por Filial
+      const byLoc = {};
+      sales.forEach(s => {
+        const loc = s.location || 'Outros';
+        if (!byLoc[loc]) byLoc[loc] = { count: 0, total: 0 };
+        byLoc[loc].count += 1;
+        byLoc[loc].total += (parseFloat(s.value) || 0);
+      });
+
+      // Agrupamento por Forma de Pagamento
+      const byPay = {};
+      sales.forEach(s => {
+        const pay = s.payment || 'Outros';
+        if (!byPay[pay]) byPay[pay] = { count: 0, total: 0 };
+        byPay[pay].count += 1;
+        byPay[pay].total += (parseFloat(s.value) || 0);
+      });
+
+      const now = new Date();
+      const dataHoraStr = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      // ── CABEÇALHO COM BRANDING RADICAL ──
+      doc.setFillColor(196, 24, 10); // Vermelho Radical
+      doc.rect(0, 0, 210, 30, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(255, 255, 255);
+      doc.text('RADICAL CAPACETES', 14, 14);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9.5);
+      doc.setTextColor(255, 220, 215);
+      doc.text('RELATÓRIO DE FECHAMENTO DE EVENTO', 14, 22);
+
+      // ── INFORMAÇÕES DO EVENTO ──
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(30, 30, 30);
+      doc.text(`EVENTO: ${eventName.toUpperCase()}`, 14, 40);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(110, 110, 110);
+      doc.text(`Data de Emissão: ${dataHoraStr}`, 14, 46);
+
+      // ── CARDS DE RESUMO (KPIS) ──
+      // Total Geral
+      doc.setFillColor(245, 245, 248);
+      doc.roundedRect(14, 51, 58, 22, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 130);
+      doc.text('TOTAL FATURADO', 18, 58);
+      doc.setFontSize(12);
+      doc.setTextColor(196, 24, 10);
+      doc.text(totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 18, 67);
+
+      // Total Pedidos
+      doc.setFillColor(245, 245, 248);
+      doc.roundedRect(76, 51, 58, 22, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 130);
+      doc.text('TOTAL DE VENDAS', 80, 58);
+      doc.setFontSize(12);
+      doc.setTextColor(30, 30, 30);
+      doc.text(`${totalCount} capacete(s)`, 80, 67);
+
+      // Ticket Médio
+      doc.setFillColor(245, 245, 248);
+      doc.roundedRect(138, 51, 58, 22, 2, 2, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(120, 120, 130);
+      doc.text('TICKET MÉDIO', 142, 58);
+      doc.setFontSize(12);
+      doc.setTextColor(30, 30, 30);
+      doc.text(ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), 142, 67);
+
+      // ── TABELAS RESUMO (FILIAIS E FORMAS DE PAGAMENTO) ──
+      const locRows = Object.entries(byLoc).map(([loc, data]) => [
+        loc,
+        `${data.count} un`,
+        data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      ]);
+
+      const payRows = Object.entries(byPay).map(([pay, data]) => [
+        pay,
+        `${data.count} un`,
+        data.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      ]);
+
+      // Tabela Filiais
+      doc.autoTable({
+        startY: 78,
+        margin: { left: 14, right: 110 },
+        head: [['Filial', 'Qtd', 'Total']],
+        body: locRows,
+        theme: 'grid',
+        headStyles: { fillColor: [45, 45, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8, textColor: [40, 40, 40] },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'center', cellWidth: 16 },
+          2: { halign: 'right', fontStyle: 'bold' }
+        }
+      });
+
+      const afterLocY = doc.lastAutoTable.finalY;
+
+      // Tabela Formas de Pagamento
+      doc.autoTable({
+        startY: 78,
+        margin: { left: 110, right: 14 },
+        head: [['Forma de Pagamento', 'Qtd', 'Total']],
+        body: payRows,
+        theme: 'grid',
+        headStyles: { fillColor: [45, 45, 55], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 8, textColor: [40, 40, 40] },
+        columnStyles: {
+          0: { cellWidth: 'auto' },
+          1: { halign: 'center', cellWidth: 16 },
+          2: { halign: 'right', fontStyle: 'bold' }
+        }
+      });
+
+      const afterPayY = doc.lastAutoTable.finalY;
+      const startDetailsY = Math.max(afterLocY, afterPayY) + 10;
+
+      // ── TABELA DETALHADA DE VENDAS ──
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(30, 30, 30);
+      doc.text('DETALHAMENTO DE TODAS AS VENDAS', 14, startDetailsY - 3);
+
+      const salesTableBody = sales.map((sale, index) => {
+        let dataStr = '-';
+        if (sale.date) {
+          const d = new Date(sale.date);
+          dataStr = d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        const paymentStr = (sale.payment || '-') + (sale.installments ? ` (${sale.installments}x)` : '');
+        const valStr = (parseFloat(sale.value) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        return [
+          String(index + 1),
+          dataStr,
+          sale.product || 'Capacete',
+          sale.location || '-',
+          paymentStr,
+          sale.notes || '-',
+          valStr
+        ];
+      });
+
+      doc.autoTable({
+        startY: startDetailsY,
+        margin: { left: 14, right: 14 },
+        head: [['#', 'Data/Hora', 'Produto / Capacete', 'Filial', 'Pagamento', 'Observações', 'Valor']],
+        body: salesTableBody,
+        foot: [['', '', 'TOTAL GERAL', '', `${totalCount} itens`, '', totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]],
+        theme: 'striped',
+        headStyles: {
+          fillColor: [196, 24, 10],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5
+        },
+        footStyles: {
+          fillColor: [240, 240, 245],
+          textColor: [196, 24, 10],
+          fontStyle: 'bold',
+          fontSize: 9.5
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [40, 40, 40]
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 8 },
+          1: { cellWidth: 26, fontSize: 7.5 },
+          2: { fontStyle: 'bold' },
+          3: { halign: 'center', cellWidth: 24 },
+          4: { halign: 'center', cellWidth: 26 },
+          5: { fontSize: 7.5 },
+          6: { halign: 'right', fontStyle: 'bold', cellWidth: 26 }
+        },
+        didDrawPage: function(data) {
+          const pageCount = doc.internal.getNumberOfPages();
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text(
+            `Radical Capacetes • Página ${doc.internal.getCurrentPageInfo().pageNumber} de ${pageCount}`,
+            14,
+            290
+          );
+        }
+      });
+
+      const safeName = (eventName || 'Evento').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileDate = now.toISOString().slice(0, 10);
+      doc.save(`Fechamento_Evento_${safeName}_${fileDate}.pdf`);
+
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      alert('Erro ao gerar o arquivo PDF: ' + err.message);
+    }
+  }
+
+  // Finalizar evento button handler
+  if (btnFinalizeEvent) {
+    btnFinalizeEvent.addEventListener('click', () => {
+      const ev = state.events.find(e => String(e.id) === String(state.currentEventId));
+      const eventName = ev ? ev.name : (dashboardEventName ? dashboardEventName.textContent : 'Geral');
+      exportEventPDF(state.currentEventId, eventName, state.sales);
+    });
   }
 
   // --- LOCATIONS DETAIL MODAL ---
@@ -667,11 +891,26 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const response = await secureFetch('/api/sales/' + id, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete');
-      await loadSales();
+      state.sales = (state.sales || []).filter(s => String(s.id) !== String(id));
+      renderDashboard();
     } catch (err) {
       console.error(err);
       alert('Erro ao excluir a venda.');
     }
+  }
+
+  // Refresh button listener
+  if (btnRefreshData) {
+    btnRefreshData.addEventListener('click', async () => {
+      btnRefreshData.classList.add('spinning');
+      try {
+        await loadSales(state.currentEventId);
+      } catch (err) {
+        console.error('Erro ao atualizar:', err);
+      } finally {
+        setTimeout(() => btnRefreshData.classList.remove('spinning'), 600);
+      }
+    });
   }
 
   function openEditSale(id) {
@@ -847,6 +1086,17 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!response.ok) throw new Error('Failed to save sale');
+      const savedSale = await response.json();
+
+      if (isEditing) {
+        const idx = (state.sales || []).findIndex(s => String(s.id) === String(state.editingSaleId));
+        if (idx !== -1) {
+          state.sales[idx] = { ...state.sales[idx], ...savedSale };
+        }
+      } else {
+        if (!state.sales) state.sales = [];
+        state.sales.unshift(savedSale);
+      }
 
       // Reset form
       saleProductSelect.value = '';
