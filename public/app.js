@@ -512,8 +512,47 @@ document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
   }
 
+  // ── Helper para garantir carregamento do jsPDF ──
+  function getJsPdfConstructor() {
+    if (typeof window.jspdf !== 'undefined') {
+      if (typeof window.jspdf.jsPDF === 'function') return window.jspdf.jsPDF;
+      if (typeof window.jspdf === 'function') return window.jspdf;
+    }
+    if (typeof window.jsPDF === 'function') return window.jsPDF;
+    if (typeof jsPDF === 'function') return jsPDF;
+    return null;
+  }
+
+  async function ensureJsPDF() {
+    let ctor = getJsPdfConstructor();
+    if (ctor) return ctor;
+
+    const loadScript = (src) => new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false);
+      document.head.appendChild(s);
+    });
+
+    if (!getJsPdfConstructor()) {
+      await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    }
+    if (!getJsPdfConstructor()) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    }
+    if (!getJsPdfConstructor()) {
+      await loadScript('https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    }
+
+    // Garantir plugin AutoTable
+    await loadScript('https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js');
+
+    return getJsPdfConstructor();
+  }
+
   // --- FINALIZAR EVENTO & EXPORTAR RELATÓRIO PDF ---
-  function exportEventPDF(eventId, eventName, salesList) {
+  async function exportEventPDF(eventId, eventName, salesList) {
     const sales = salesList || [];
     if (sales.length === 0) {
       alert(`Nenhuma venda registrada para o evento "${eventName}".`);
@@ -524,13 +563,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirmed) return;
 
     try {
-      if (!window.jspdf || !window.jspdf.jsPDF) {
-        alert('A biblioteca de geração de PDF ainda está carregando. Tente novamente em alguns instantes.');
+      const JsPDFClass = await ensureJsPDF();
+      if (!JsPDFClass) {
+        alert('Não foi possível carregar a biblioteca de PDF. Verifique sua conexão com a internet e tente novamente.');
         return;
       }
 
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF({
+      const doc = new JsPDFClass({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4'
