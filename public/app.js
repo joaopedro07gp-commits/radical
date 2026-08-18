@@ -713,7 +713,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const safeName = (eventName || 'Evento').replace(/[^a-zA-Z0-9_-]/g, '_');
       const fileDate = now.toISOString().slice(0, 10);
-      doc.save(`Fechamento_Evento_${safeName}_${fileDate}.pdf`);
+      const filename = `Fechamento_Evento_${safeName}_${fileDate}.pdf`;
+
+      try {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          const blob = doc.output('blob');
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = filename;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(blobUrl);
+          }, 4000);
+        } else {
+          doc.save(filename);
+        }
+      } catch (saveErr) {
+        doc.save(filename);
+      }
 
     } catch (err) {
       console.error('Erro ao gerar PDF:', err);
