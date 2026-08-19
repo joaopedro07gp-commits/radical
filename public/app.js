@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.setItem(THEME_KEY, next);
   }
   initTheme();
-  if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+  document.querySelectorAll('.theme-toggle-btn').forEach(btn => btn.addEventListener('click', toggleTheme));
 
   // --- AUTHENTICATION ---
   // Helper to fetch with auth token
